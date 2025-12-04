@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createStackNavigator } from "@react-navigation/stack";
@@ -280,7 +281,8 @@ export default function App() {
 
   return (
     <PaperProvider theme={theme}>
-      <View style={styles.container}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <View style={styles.container}>
         <NavigationContainer
           linking={linking}
           fallback={<Text>Loading...</Text>}
@@ -296,6 +298,7 @@ export default function App() {
           </Stack.Navigator>
         </NavigationContainer>
       </View>
+      </GestureHandlerRootView>
     </PaperProvider>
   );
 }
