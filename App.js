@@ -280,26 +280,26 @@ export default function App() {
   }
 
   return (
-    <PaperProvider theme={theme}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <PaperProvider theme={theme}>
         <View style={styles.container}>
-        <NavigationContainer
-          linking={linking}
-          fallback={<Text>Loading...</Text>}
-        >
-          <Stack.Navigator screenOptions={{ headerShown: false }}>
-            {!isLoggedIn ? (
-              <Stack.Screen name="Auth">
-                {() => <AuthNavigator onLogin={handleLogin} />}
-              </Stack.Screen>
-            ) : (
-              <Stack.Screen name="Main" component={MainTabs} />
-            )}
-          </Stack.Navigator>
-        </NavigationContainer>
-      </View>
-      </GestureHandlerRootView>
-    </PaperProvider>
+          <NavigationContainer
+            linking={linking}
+            fallback={<Text>Loading...</Text>}
+          >
+            <Stack.Navigator screenOptions={{ headerShown: false }}>
+              {!isLoggedIn ? (
+                <Stack.Screen name="Auth">
+                  {() => <AuthNavigator onLogin={handleLogin} />}
+                </Stack.Screen>
+              ) : (
+                <Stack.Screen name="Main" component={MainTabs} />
+              )}
+            </Stack.Navigator>
+          </NavigationContainer>
+        </View>
+      </PaperProvider>
+    </GestureHandlerRootView>
   );
 }
 
