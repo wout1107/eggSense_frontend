@@ -5,17 +5,15 @@ ENV EXPO_NO_INTERACTIVE=1 \
 
 WORKDIR /app
 
-# cache layer
+# Copy package files
 COPY package*.json ./
-RUN npm install
+RUN npm install --legacy-peer-deps
 
-# app code
+# Copy app code
 COPY . .
 
-# Ports:
-# 19000: bundler (Expo Go), 19001: WS, 19002: DevTools, 19006: Web
-EXPOSE 19000 19001 19002 19006
+# Expose port for Expo web
+EXPOSE 8081
 
-# Run web (and LAN) so it’s reachable from host
-# If LAN causes issues, switch to: ["npm","run","start:web"]
-CMD ["npm","run","start:web:lan"]
+# Start Expo web server using npm script
+CMD ["npm", "run", "web"]
