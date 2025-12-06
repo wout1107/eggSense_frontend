@@ -1,10 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, ScrollView, Alert } from "react-native";
-import { Card, Title, TextInput, Button, Divider } from "react-native-paper";
+import {
+  Card,
+  Title,
+  TextInput,
+  Button,
+  IconButton,
+  SegmentedButtons,
+  Chip,
+} from "react-native-paper";
 import productionService from "../services/productionService";
 import stallService from "../services/stallService";
 
-export default function DailyInputScreen() {
+export default function DailyInputScreen({ navigation, route }) {
+  const { selectedStallId } = route.params || {};
+
   const [eggData, setEggData] = useState({
     small: "",
     medium: "",
@@ -24,12 +34,48 @@ export default function DailyInputScreen() {
   const loadStalls = async () => {
     try {
       const stallList = await stallService.listStalls();
-      setStalls(stallList);
-      if (stallList.length > 0) {
+      const activeStalls = stallList.filter((stall) => stall.active);
+      setStalls(activeStalls.length > 0 ? activeStalls : stallList);
+
+      // Priority: 1. Stall from navigation params, 2. First active stall, 3. First stall
+      if (selectedStallId) {
+        const preSelectedStall = stallList.find(
+          (stall) => stall.id === selectedStallId
+        );
+        if (preSelectedStall) {
+          setSelectedStall(preSelectedStall.id);
+          return;
+        }
+      }
+
+      if (activeStalls.length > 0) {
+        setSelectedStall(activeStalls[0].id);
+      } else if (stallList.length > 0) {
         setSelectedStall(stallList[0].id);
+        Alert.alert(
+          "Let op",
+          "Er zijn geen actieve stallen. Selecteer een inactieve stal of activeer een stal in de instellingen."
+        );
+      } else {
+        Alert.alert(
+          "Geen Stallen",
+          "Er zijn nog geen stallen aangemaakt. Maak eerst een stal aan in de instellingen.",
+          [
+            {
+              text: "Naar Instellingen",
+              onPress: () => navigation.navigate("Settings"),
+            },
+            {
+              text: "Annuleren",
+              onPress: () => navigation.goBack(),
+              style: "cancel",
+            },
+          ]
+        );
       }
     } catch (error) {
       console.error("Error loading stalls:", error);
+      Alert.alert("Fout", "Kon stallen niet ophalen");
     }
   };
 
@@ -49,7 +95,7 @@ export default function DailyInputScreen() {
 
     try {
       const productionData = {
-        recordDate: new Date().toISOString().split('T')[0],
+        recordDate: new Date().toISOString().split("T")[0],
         stallId: selectedStall,
         eggsSmall: parseInt(eggData.small || 0),
         eggsMedium: parseInt(eggData.medium || 0),
@@ -68,10 +114,27 @@ export default function DailyInputScreen() {
         parseInt(eggData.medium || 0) +
         parseInt(eggData.large || 0);
 
+      const selectedStallName =
+        stalls.find((s) => s.id === selectedStall)?.name || "Stal";
+
       Alert.alert(
         "Gegevens Opgeslagen",
-        `Totaal ${totalEggs} eieren geregistreerd voor vandaag`,
-        [{ text: "OK", onPress: () => resetForm() }]
+        `Totaal ${totalEggs} eieren geregistreerd voor ${selectedStallName} op ${new Date().toLocaleDateString(
+          "nl-NL"
+        )}`,
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              resetForm();
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+              } else {
+                navigation.navigate("MainTabs", { screen: "Dashboard" });
+              }
+            },
+          },
+        ]
       );
     } catch (error) {
       Alert.alert("Fout", error.message || "Kon gegevens niet opslaan");
@@ -87,82 +150,243 @@ export default function DailyInputScreen() {
     setCasualties("");
   };
 
+  const renderStallSelector = () => {
+    if (stalls.length === 0) {
+      return (
+        <Card style={styles.card}>
+          <Card.Content>
+            <Text style={styles.noStallsText}>
+              Geen stallen beschikbaar. Maak eerst een stal aan in de
+              instellingen.
+            </Text>
+            <Button
+              mode="contained"
+              onPress={() => navigation.navigate("Settings")}
+              style={styles.settingsButton}
+              buttonColor="#2E7D32"
+              icon="cog"
+            >
+              Naar Instellingen
+            </Button>
+          </Card.Content>
+        </Card>
+      );
+    }
+
+    if (stalls.length === 1) {
+      const currentStall = stalls[0];
+      const isPreSelected = selectedStallId === currentStall.id;
+
+      return (
+        <Card style={styles.stallCard}>
+          <Card.Content>
+            <View style={styles.singleStallHeader}>
+              <Text style={styles.stallLabel}>Stal:</Text>
+              <Chip
+                mode="flat"
+                icon="barn"
+                style={styles.selectedStallChip}
+                textStyle={styles.selectedStallText}
+              >
+                {currentStall.name}
+                {isPreSelected && " ✓"}
+              </Chip>
+            </View>
+            <Text style={styles.stallCapacity}>
+              Capaciteit: {currentStall.capacity} kippen
+            </Text>
+            {isPreSelected && (
+              <Text style={styles.preSelectedText}>
+                Automatisch geselecteerd van Dashboard
+              </Text>
+            )}
+          </Card.Content>
+        </Card>
+      );
+    }
+
+    // Multiple stalls - show selector
+    return (
+      <Card style={styles.stallCard}>
+        <Card.Content>
+          <Title style={styles.stallSelectorTitle}>Selecteer Stal</Title>
+          {selectedStallId && (
+            <Text style={styles.preSelectedHint}>
+              ✓ Stal geselecteerd van Dashboard
+            </Text>
+          )}
+          <View style={styles.stallChipsContainer}>
+            {stalls.map((stall) => {
+              const isCurrentlySelected = selectedStall === stall.id;
+              const wasPreSelected = selectedStallId === stall.id;
+
+              return (
+                <Chip
+                  key={stall.id}
+                  mode={isCurrentlySelected ? "flat" : "outlined"}
+                  selected={isCurrentlySelected}
+                  onPress={() => setSelectedStall(stall.id)}
+                  style={[
+                    styles.stallChip,
+                    isCurrentlySelected && styles.selectedStallChipMulti,
+                  ]}
+                  textStyle={
+                    isCurrentlySelected && styles.selectedStallTextMulti
+                  }
+                  icon={wasPreSelected ? "check-circle" : "barn"}
+                >
+                  {stall.name}
+                </Chip>
+              );
+            })}
+          </View>
+          {selectedStall && (
+            <View style={styles.selectedStallInfo}>
+              <Text style={styles.selectedStallInfoText}>
+                Capaciteit:{" "}
+                {stalls.find((s) => s.id === selectedStall)?.capacity} kippen
+              </Text>
+            </View>
+          )}
+        </Card.Content>
+      </Card>
+    );
+  };
+
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.header}>Dagelijkse Invoer</Text>
-      <Text style={styles.date}>{new Date().toLocaleDateString("nl-NL")}</Text>
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Dagelijkse Invoer</Text>
+        <IconButton
+          icon="close"
+          size={24}
+          iconColor="#2E7D32"
+          onPress={() => {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigation.navigate("MainTabs", { screen: "Dashboard" });
+            }
+          }}
+        />
+      </View>
 
-      <Card style={styles.card}>
-        <Card.Content>
-          <Title style={styles.cardTitle}>Eieren Productie</Title>
-          <TextInput
-            label="Kleine eieren (S)"
-            value={eggData.small}
-            onChangeText={(text) => setEggData({ ...eggData, small: text })}
-            keyboardType="numeric"
-            style={styles.input}
-          />
-          <TextInput
-            label="Middelgrote eieren (M)"
-            value={eggData.medium}
-            onChangeText={(text) => setEggData({ ...eggData, medium: text })}
-            keyboardType="numeric"
-            style={styles.input}
-          />
-          <TextInput
-            label="Grote eieren (L)"
-            value={eggData.large}
-            onChangeText={(text) => setEggData({ ...eggData, large: text })}
-            keyboardType="numeric"
-            style={styles.input}
-          />
-        </Card.Content>
-      </Card>
+      <ScrollView style={styles.scrollContent}>
+        <Text style={styles.date}>
+          {new Date().toLocaleDateString("nl-NL", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}
+        </Text>
 
-      <Card style={styles.card}>
-        <Card.Content>
-          <Title style={styles.cardTitle}>Verbruik</Title>
-          <TextInput
-            label="Voer verbruik (kg)"
-            value={feedConsumption}
-            onChangeText={setFeedConsumption}
-            keyboardType="numeric"
-            style={styles.input}
-          />
-          <TextInput
-            label="Water verbruik (liter)"
-            value={waterConsumption}
-            onChangeText={setWaterConsumption}
-            keyboardType="numeric"
-            style={styles.input}
-          />
-        </Card.Content>
-      </Card>
+        {renderStallSelector()}
 
-      <Card style={styles.card}>
-        <Card.Content>
-          <Title style={styles.cardTitle}>Uitval</Title>
-          <TextInput
-            label="Aantal uitgevallen kippen"
-            value={casualties}
-            onChangeText={setCasualties}
-            keyboardType="numeric"
-            style={styles.input}
-          />
-        </Card.Content>
-      </Card>
+        {stalls.length > 0 && selectedStall && (
+          <>
+            <Card style={styles.card}>
+              <Card.Content>
+                <Title style={styles.cardTitle}>Eieren Productie</Title>
+                <TextInput
+                  label="Kleine eieren (S)"
+                  value={eggData.small}
+                  onChangeText={(text) =>
+                    setEggData({ ...eggData, small: text })
+                  }
+                  keyboardType="numeric"
+                  style={styles.input}
+                  mode="outlined"
+                  left={<TextInput.Icon icon="egg" />}
+                />
+                <TextInput
+                  label="Middelgrote eieren (M)"
+                  value={eggData.medium}
+                  onChangeText={(text) =>
+                    setEggData({ ...eggData, medium: text })
+                  }
+                  keyboardType="numeric"
+                  style={styles.input}
+                  mode="outlined"
+                  left={<TextInput.Icon icon="egg" />}
+                />
+                <TextInput
+                  label="Grote eieren (L)"
+                  value={eggData.large}
+                  onChangeText={(text) =>
+                    setEggData({ ...eggData, large: text })
+                  }
+                  keyboardType="numeric"
+                  style={styles.input}
+                  mode="outlined"
+                  left={<TextInput.Icon icon="egg" />}
+                />
+                <View style={styles.totalEggsContainer}>
+                  <Text style={styles.totalEggsLabel}>Totaal:</Text>
+                  <Text style={styles.totalEggsValue}>
+                    {parseInt(eggData.small || 0) +
+                      parseInt(eggData.medium || 0) +
+                      parseInt(eggData.large || 0) || 0}{" "}
+                    eieren
+                  </Text>
+                </View>
+              </Card.Content>
+            </Card>
 
-      <Button
-        mode="contained"
-        onPress={handleSave}
-        style={styles.saveButton}
-        buttonColor="#2E7D32"
-        loading={isLoading}
-        disabled={isLoading}
-      >
-        Gegevens Opslaan
-      </Button>
-    </ScrollView>
+            <Card style={styles.card}>
+              <Card.Content>
+                <Title style={styles.cardTitle}>Verbruik</Title>
+                <TextInput
+                  label="Voer verbruik (kg)"
+                  value={feedConsumption}
+                  onChangeText={setFeedConsumption}
+                  keyboardType="numeric"
+                  style={styles.input}
+                  mode="outlined"
+                  left={<TextInput.Icon icon="food-drumstick" />}
+                />
+                <TextInput
+                  label="Water verbruik (liter)"
+                  value={waterConsumption}
+                  onChangeText={setWaterConsumption}
+                  keyboardType="numeric"
+                  style={styles.input}
+                  mode="outlined"
+                  left={<TextInput.Icon icon="water" />}
+                />
+              </Card.Content>
+            </Card>
+
+            <Card style={styles.card}>
+              <Card.Content>
+                <Title style={styles.cardTitle}>Uitval</Title>
+                <TextInput
+                  label="Aantal uitgevallen kippen"
+                  value={casualties}
+                  onChangeText={setCasualties}
+                  keyboardType="numeric"
+                  style={styles.input}
+                  mode="outlined"
+                  left={<TextInput.Icon icon="alert-circle" />}
+                />
+              </Card.Content>
+            </Card>
+
+            <Button
+              mode="contained"
+              onPress={handleSave}
+              style={styles.saveButton}
+              buttonColor="#2E7D32"
+              loading={isLoading}
+              disabled={isLoading}
+              icon="check"
+            >
+              Gegevens Opslaan
+            </Button>
+          </>
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -170,18 +394,110 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
-    padding: 16,
   },
   header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+  },
+  headerTitle: {
     fontSize: 24,
     fontWeight: "bold",
     color: "#2E7D32",
-    marginBottom: 4,
+  },
+  scrollContent: {
+    flex: 1,
+    padding: 16,
   },
   date: {
     fontSize: 16,
     color: "#666",
-    marginBottom: 20,
+    marginBottom: 16,
+    fontWeight: "500",
+  },
+  stallCard: {
+    marginBottom: 16,
+    elevation: 4,
+    backgroundColor: "#fff",
+  },
+  singleStallHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  stallLabel: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#2E7D32",
+  },
+  selectedStallChip: {
+    backgroundColor: "#E8F5E9",
+  },
+  selectedStallText: {
+    color: "#2E7D32",
+    fontWeight: "bold",
+  },
+  stallCapacity: {
+    fontSize: 14,
+    color: "#666",
+  },
+  preSelectedText: {
+    fontSize: 12,
+    color: "#4CAF50",
+    fontStyle: "italic",
+    marginTop: 4,
+  },
+  stallSelectorTitle: {
+    fontSize: 18,
+    color: "#2E7D32",
+    marginBottom: 8,
+  },
+  preSelectedHint: {
+    fontSize: 12,
+    color: "#4CAF50",
+    marginBottom: 12,
+    fontStyle: "italic",
+  },
+  stallChipsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 12,
+  },
+  stallChip: {
+    marginBottom: 4,
+  },
+  selectedStallChipMulti: {
+    backgroundColor: "#2E7D32",
+  },
+  selectedStallTextMulti: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  selectedStallInfo: {
+    backgroundColor: "#E8F5E9",
+    padding: 12,
+    borderRadius: 8,
+  },
+  selectedStallInfoText: {
+    fontSize: 14,
+    color: "#2E7D32",
+    fontWeight: "500",
+  },
+  noStallsText: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 16,
+  },
+  settingsButton: {
+    marginTop: 8,
   },
   card: {
     marginBottom: 16,
@@ -190,10 +506,30 @@ const styles = StyleSheet.create({
   cardTitle: {
     color: "#2E7D32",
     marginBottom: 12,
+    fontSize: 18,
   },
   input: {
     marginBottom: 12,
     backgroundColor: "white",
+  },
+  totalEggsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#E8F5E9",
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  totalEggsLabel: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#2E7D32",
+  },
+  totalEggsValue: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#2E7D32",
   },
   saveButton: {
     marginTop: 20,

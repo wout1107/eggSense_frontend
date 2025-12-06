@@ -11,7 +11,7 @@ import { Button, Card, Title, Paragraph, IconButton } from "react-native-paper";
 
 const { width, height } = Dimensions.get("window");
 
-export default function WelcomeScreen({ onContinue }) {
+export default function WelcomeScreen({ navigation }) {
   const [currentSlide, setCurrentSlide] = useState(0);
 
   const features = [
@@ -182,7 +182,7 @@ export default function WelcomeScreen({ onContinue }) {
         </Paragraph>
         <Button
           mode="contained"
-          onPress={onContinue}
+          onPress={() => navigation.navigate("Login")}
           style={styles.ctaButton}
           buttonColor="#2E7D32"
           contentStyle={styles.ctaButtonContent}

@@ -1,755 +1,305 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  Alert,
-  TouchableOpacity,
+  FlatList,
   RefreshControl,
+  Alert,
 } from "react-native";
 import {
   Card,
-  Title,
-  TextInput,
   Button,
-  Paragraph,
-  FAB,
-  Modal,
+  Dialog,
   Portal,
+  TextInput,
+  FAB,
   Chip,
-  IconButton,
-  Divider,
-  ProgressBar,
-  SegmentedButtons,
-  List,
 } from "react-native-paper";
-import { useNavigation } from "@react-navigation/native";
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import api from "../services/api";
+import stallService from "../services/stallService";
 
 export default function FeedDeliveryScreen() {
-  const navigation = useNavigation();
+  const [deliveries, setDeliveries] = useState([]);
+  const [stalls, setStalls] = useState([]);
+  const [selectedStall, setSelectedStall] = useState(null);
+  const [inventory, setInventory] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedPeriod, setSelectedPeriod] = useState("month");
-
-  const [feedInventory, setFeedInventory] = useState({
-    currentStock: 850, // kg
-    minimumStock: 200, // kg
-    averageDailyConsumption: 28.5, // kg
-    lastDeliveryDate: "2024-01-10",
-    lastDeliveryAmount: 1000,
-  });
-
-  const [deliveries, setDeliveries] = useState([
-    {
-      id: "1",
-      date: "2024-01-10",
-      supplier: "Voerhandel De Kip",
-      amount: 1000,
-      pricePerKg: 0.45,
-      totalCost: 450.0,
-      invoiceNumber: "INV-2024-001",
-      notes: "Reguliere levering",
-      status: "Ontvangen",
-    },
-    {
-      id: "2",
-      date: "2023-12-28",
-      supplier: "Voerhandel De Kip",
-      amount: 1000,
-      pricePerKg: 0.45,
-      totalCost: 450.0,
-      invoiceNumber: "INV-2023-245",
-      notes: "",
-      status: "Ontvangen",
-    },
-    {
-      id: "3",
-      date: "2023-12-15",
-      supplier: "Voerhandel De Kip",
-      amount: 1000,
-      pricePerKg: 0.44,
-      totalCost: 440.0,
-      invoiceNumber: "INV-2023-232",
-      notes: "",
-      status: "Ontvangen",
-    },
-  ]);
-
-  const [suppliers, setSuppliers] = useState([
-    {
-      id: "1",
-      name: "Voerhandel De Kip",
-      phone: "06-12345678",
-      email: "info@voerhandeldekip.nl",
-      pricePerKg: 0.45,
-      deliveryDays: "Di, Do",
-      totalDeliveries: 15,
-      totalAmount: 15000,
-    },
-    {
-      id: "2",
-      name: "Agrarisch Voer BV",
-      phone: "06-87654321",
-      email: "verkoop@agrarischvoer.nl",
-      pricePerKg: 0.42,
-      deliveryDays: "Ma, Wo, Vr",
-      totalDeliveries: 3,
-      totalAmount: 3000,
-    },
-  ]);
+  const [showDialog, setShowDialog] = useState(false);
 
   const [newDelivery, setNewDelivery] = useState({
-    date: new Date().toISOString().split("T")[0],
-    supplierId: "",
-    supplierName: "",
-    amount: "",
-    pricePerKg: "",
-    invoiceNumber: "",
+    stallId: null,
+    supplier: "",
+    quantityKg: "",
+    cost: "",
     notes: "",
   });
 
-  useEffect(() => {
-    calculateFeedStatistics();
-  }, [deliveries, feedInventory]);
+  const loadData = useCallback(async () => {
+    try {
+      setRefreshing(true);
+      // Load stalls
+      const stallsData = await stallService.listStalls();
+      setStalls(stallsData);
 
-  const onRefresh = React.useCallback(() => {
-    setRefreshing(true);
-    setTimeout(() => {
+      const activeStall = stallsData.find((s) => s.active) || stallsData[0];
+      if (activeStall) {
+        setSelectedStall(activeStall);
+        setNewDelivery({ ...newDelivery, stallId: activeStall.id });
+        await loadStallData(activeStall.id);
+      }
+    } catch (error) {
+      console.error("Error loading feed deliveries:", error);
+      Alert.alert("Fout", "Kon voerleveringen niet ophalen");
+    } finally {
       setRefreshing(false);
-    }, 1000);
+    }
   }, []);
 
-  const calculateFeedStatistics = () => {
-    // Calculate days until empty
-    const daysUntilEmpty =
-      feedInventory.currentStock / feedInventory.averageDailyConsumption;
+  const loadStallData = async (stallId) => {
+    try {
+      // Load deliveries for selected stall
+      const response = await api.get("/feed-deliveries", {
+        params: { stallId },
+      });
+      setDeliveries(response.data);
 
-    // Calculate monthly consumption
-    const monthlyConsumption = feedInventory.averageDailyConsumption * 30;
-
-    // Calculate total cost this month
-    const thisMonthDeliveries = deliveries.filter((delivery) => {
-      const deliveryDate = new Date(delivery.date);
-      const now = new Date();
-      return (
-        deliveryDate.getMonth() === now.getMonth() &&
-        deliveryDate.getFullYear() === now.getFullYear()
+      // Load inventory
+      const invResponse = await api.get(
+        `/feed-deliveries/stall/${stallId}/inventory`
       );
-    });
-
-    const monthlyFeedCost = thisMonthDeliveries.reduce(
-      (sum, delivery) => sum + delivery.totalCost,
-      0
-    );
-
-    return {
-      daysUntilEmpty: Math.round(daysUntilEmpty),
-      monthlyConsumption: Math.round(monthlyConsumption),
-      monthlyFeedCost: monthlyFeedCost.toFixed(2),
-    };
+      setInventory(invResponse.data);
+    } catch (error) {
+      console.error("Error loading stall feed data:", error);
+    }
   };
 
-  const selectSupplierForDelivery = () => {
-    Alert.alert(
-      "Selecteer Leverancier",
-      "Kies een leverancier voor deze levering",
-      [
-        ...suppliers.map((supplier) => ({
-          text: supplier.name,
-          onPress: () =>
-            setNewDelivery({
-              ...newDelivery,
-              supplierId: supplier.id,
-              supplierName: supplier.name,
-              pricePerKg: supplier.pricePerKg.toString(),
-            }),
-        })),
-        { text: "Annuleren", style: "cancel" },
-      ],
-      { cancelable: true }
-    );
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const onRefresh = useCallback(() => {
+    loadData();
+  }, [loadData]);
+
+  const handleStallChange = async (stall) => {
+    setSelectedStall(stall);
+    setNewDelivery({ ...newDelivery, stallId: stall.id });
+    await loadStallData(stall.id);
   };
 
-  const addDelivery = () => {
-    if (!newDelivery.supplierId || !newDelivery.amount) {
-      Alert.alert("Fout", "Vul alle verplichte velden in");
+  const handleCreateDelivery = async () => {
+    if (!newDelivery.supplier.trim()) {
+      Alert.alert("Fout", "Vul een leverancier in");
       return;
     }
 
-    const amount = parseFloat(newDelivery.amount);
-    const pricePerKg = parseFloat(newDelivery.pricePerKg);
-    const totalCost = amount * pricePerKg;
+    if (!newDelivery.quantityKg || parseFloat(newDelivery.quantityKg) <= 0) {
+      Alert.alert("Fout", "Vul een geldige hoeveelheid in");
+      return;
+    }
 
-    const delivery = {
-      id: Date.now().toString(),
-      date: newDelivery.date,
-      supplier: newDelivery.supplierName,
-      amount: amount,
-      pricePerKg: pricePerKg,
-      totalCost: totalCost,
-      invoiceNumber: newDelivery.invoiceNumber,
-      notes: newDelivery.notes,
-      status: "Ontvangen",
-    };
+    try {
+      await api.post("/feed-deliveries", {
+        stallId: newDelivery.stallId,
+        supplier: newDelivery.supplier,
+        quantityKg: parseFloat(newDelivery.quantityKg),
+        cost: parseFloat(newDelivery.cost || 0),
+        notes: newDelivery.notes,
+      });
 
-    setDeliveries([delivery, ...deliveries]);
-
-    // Update inventory
-    setFeedInventory({
-      ...feedInventory,
-      currentStock: feedInventory.currentStock + amount,
-      lastDeliveryDate: newDelivery.date,
-      lastDeliveryAmount: amount,
-    });
-
-    setNewDelivery({
-      date: new Date().toISOString().split("T")[0],
-      supplierId: "",
-      supplierName: "",
-      amount: "",
-      pricePerKg: "",
-      invoiceNumber: "",
-      notes: "",
-    });
-
-    setModalVisible(false);
-    Alert.alert("Succes", "Voerlevering toegevoegd en voorraad bijgewerkt");
+      setShowDialog(false);
+      setNewDelivery({
+        stallId: selectedStall?.id,
+        supplier: "",
+        quantityKg: "",
+        cost: "",
+        notes: "",
+      });
+      await loadData();
+      Alert.alert("Succes", "Voerlevering succesvol aangemaakt");
+    } catch (error) {
+      console.error("Error creating feed delivery:", error);
+      Alert.alert("Fout", "Kon voerlevering niet aanmaken");
+    }
   };
 
-  const getStockStatusColor = () => {
-    const percentage =
-      (feedInventory.currentStock / (feedInventory.minimumStock * 5)) * 100;
-    if (percentage > 50) return "#4CAF50";
-    if (percentage > 25) return "#FF9800";
-    return "#F44336";
-  };
+  const renderStallSelector = () => {
+    if (stalls.length === 0) return null;
 
-  const getStockStatusText = () => {
-    const percentage =
-      (feedInventory.currentStock / (feedInventory.minimumStock * 5)) * 100;
-    if (percentage > 50) return "Goed";
-    if (percentage > 25) return "Laag";
-    return "Kritiek";
-  };
-
-  const orderNewFeed = (supplier) => {
-    Alert.alert(
-      "Voer Bestellen",
-      `Wilt u voer bestellen bij ${supplier.name}?\n\nPrijs: €${supplier.pricePerKg}/kg\nTelefoon: ${supplier.phone}`,
-      [
-        { text: "Annuleren", style: "cancel" },
-        {
-          text: "Bellen",
-          onPress: () => Alert.alert("Bellen", `Bel ${supplier.phone}`),
-        },
-        {
-          text: "E-mail",
-          onPress: () =>
-            Alert.alert("E-mail", `Stuur e-mail naar ${supplier.email}`),
-        },
-      ]
+    return (
+      <View style={styles.stallSelector}>
+        {stalls.map((stall) => (
+          <Chip
+            key={stall.id}
+            selected={selectedStall?.id === stall.id}
+            onPress={() => handleStallChange(stall)}
+            style={styles.stallChip}
+          >
+            {stall.name}
+          </Chip>
+        ))}
+      </View>
     );
   };
 
-  const stats = calculateFeedStatistics();
+  const renderInventoryCard = () => {
+    if (!inventory) return null;
+
+    return (
+      <Card style={styles.inventoryCard}>
+        <Card.Content>
+          <View style={styles.inventoryHeader}>
+            <Icon name="warehouse" size={32} color="#2E7D32" />
+            <Text style={styles.inventoryTitle}>Voorraad Overzicht</Text>
+          </View>
+          <View style={styles.inventoryStats}>
+            <View style={styles.inventoryStat}>
+              <Text style={styles.inventoryValue}>
+                {inventory.currentStock?.toFixed(0) || 0} kg
+              </Text>
+              <Text style={styles.inventoryLabel}>Huidige voorraad</Text>
+            </View>
+            <View style={styles.inventoryStat}>
+              <Text style={styles.inventoryValue}>
+                {inventory.avgDailyConsumption?.toFixed(1) || 0} kg/dag
+              </Text>
+              <Text style={styles.inventoryLabel}>Gemiddeld verbruik</Text>
+            </View>
+            <View style={styles.inventoryStat}>
+              <Text style={styles.inventoryValue}>
+                {inventory.daysRemaining?.toFixed(0) || 0} dagen
+              </Text>
+              <Text style={styles.inventoryLabel}>Voorraad resterend</Text>
+            </View>
+          </View>
+        </Card.Content>
+      </Card>
+    );
+  };
+
+  const renderDeliveryItem = ({ item }) => (
+    <Card style={styles.deliveryCard}>
+      <Card.Content>
+        <View style={styles.deliveryHeader}>
+          <View style={styles.deliveryInfo}>
+            <Text style={styles.supplierName}>{item.supplier}</Text>
+            <Text style={styles.deliveryDate}>
+              {new Date(item.deliveryTime).toLocaleDateString("nl-NL", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </Text>
+          </View>
+          <Icon name="truck-delivery" size={32} color="#2E7D32" />
+        </View>
+
+        <View style={styles.deliveryDetails}>
+          <View style={styles.detailRow}>
+            <Icon name="weight-kilogram" size={20} color="#666" />
+            <Text style={styles.detailText}>{item.quantityKg} kg</Text>
+          </View>
+          {item.cost > 0 && (
+            <View style={styles.detailRow}>
+              <Icon name="currency-eur" size={20} color="#666" />
+              <Text style={styles.detailText}>€{item.cost.toFixed(2)}</Text>
+            </View>
+          )}
+        </View>
+
+        {item.notes && <Text style={styles.notes}>Notitie: {item.notes}</Text>}
+      </Card.Content>
+    </Card>
+  );
 
   return (
     <View style={styles.container}>
-      <ScrollView
-        style={styles.content}
+      <View style={styles.header}>
+        <Text style={styles.title}>Voerleveringen</Text>
+      </View>
+
+      {renderStallSelector()}
+      {renderInventoryCard()}
+
+      <FlatList
+        data={deliveries}
+        renderItem={renderDeliveryItem}
+        keyExtractor={(item) => item.id.toString()}
+        contentContainerStyle={styles.listContainer}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-      >
-        <View style={styles.headerContainer}>
-          <Text style={styles.header}>Voer Beheer</Text>
-          <IconButton
-            icon="plus-circle"
-            size={28}
-            iconColor="#2E7D32"
-            onPress={() => setModalVisible(true)}
-          />
-        </View>
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Icon name="truck-delivery-outline" size={64} color="#ccc" />
+            <Text style={styles.emptyText}>Geen leveringen gevonden</Text>
+          </View>
+        }
+      />
 
-        {/* Current Stock Status */}
-        <Card style={styles.stockCard}>
-          <Card.Content>
-            <View style={styles.stockHeader}>
-              <Title style={styles.cardTitle}>Huidige Voorraad</Title>
-              <Chip
-                icon="alert-circle"
-                style={[
-                  styles.stockStatusChip,
-                  { backgroundColor: `${getStockStatusColor()}20` },
-                ]}
-                textStyle={{
-                  color: getStockStatusColor(),
-                  fontWeight: "bold",
-                }}
-              >
-                {getStockStatusText()}
-              </Chip>
-            </View>
-
-            <View style={styles.stockAmount}>
-              <IconButton
-                icon="food-apple"
-                size={48}
-                iconColor="#2E7D32"
-                style={styles.stockIcon}
-              />
-              <View style={styles.stockNumbers}>
-                <Text style={styles.stockMainNumber}>
-                  {feedInventory.currentStock} kg
-                </Text>
-                <Text style={styles.stockSubtext}>Voer op voorraad</Text>
-              </View>
-            </View>
-
-            <ProgressBar
-              progress={
-                feedInventory.currentStock / (feedInventory.minimumStock * 5)
-              }
-              color={getStockStatusColor()}
-              style={styles.progressBar}
-            />
-
-            <View style={styles.stockDetails}>
-              <View style={styles.stockDetailItem}>
-                <Text style={styles.stockDetailLabel}>Dagen resterend:</Text>
-                <Text
-                  style={[
-                    styles.stockDetailValue,
-                    {
-                      color: stats.daysUntilEmpty > 14 ? "#4CAF50" : "#FF9800",
-                    },
-                  ]}
-                >
-                  ~{stats.daysUntilEmpty} dagen
-                </Text>
-              </View>
-              <View style={styles.stockDetailItem}>
-                <Text style={styles.stockDetailLabel}>Minimale voorraad:</Text>
-                <Text style={styles.stockDetailValue}>
-                  {feedInventory.minimumStock} kg
-                </Text>
-              </View>
-              <View style={styles.stockDetailItem}>
-                <Text style={styles.stockDetailLabel}>Gemiddeld verbruik:</Text>
-                <Text style={styles.stockDetailValue}>
-                  {feedInventory.averageDailyConsumption} kg/dag
-                </Text>
-              </View>
-            </View>
-
-            {feedInventory.currentStock < feedInventory.minimumStock * 2 && (
-              <Button
-                mode="contained"
-                onPress={() => orderNewFeed(suppliers[0])}
-                style={styles.orderButton}
-                buttonColor="#FF9800"
-                icon="phone"
-              >
-                Bestel Nieuw Voer
-              </Button>
-            )}
-          </Card.Content>
-        </Card>
-
-        {/* Quick Stats */}
-        <View style={styles.statsGrid}>
-          <Card style={styles.statCard}>
-            <Card.Content>
-              <IconButton
-                icon="calendar-month"
-                size={24}
-                iconColor="#2E7D32"
-                style={styles.statIcon}
-              />
-              <Text style={styles.statNumber}>{stats.monthlyConsumption}</Text>
-              <Text style={styles.statLabel}>kg deze maand</Text>
-            </Card.Content>
-          </Card>
-
-          <Card style={styles.statCard}>
-            <Card.Content>
-              <IconButton
-                icon="currency-eur"
-                size={24}
-                iconColor="#2E7D32"
-                style={styles.statIcon}
-              />
-              <Text style={styles.statNumber}>€{stats.monthlyFeedCost}</Text>
-              <Text style={styles.statLabel}>Kosten deze maand</Text>
-            </Card.Content>
-          </Card>
-
-          <Card style={styles.statCard}>
-            <Card.Content>
-              <IconButton
-                icon="truck-delivery"
-                size={24}
-                iconColor="#2E7D32"
-                style={styles.statIcon}
-              />
-              <Text style={styles.statNumber}>
-                {feedInventory.lastDeliveryAmount}
-              </Text>
-              <Text style={styles.statLabel}>kg laatste levering</Text>
-            </Card.Content>
-          </Card>
-
-          <Card style={styles.statCard}>
-            <Card.Content>
-              <IconButton
-                icon="calendar-check"
-                size={24}
-                iconColor="#2E7D32"
-                style={styles.statIcon}
-              />
-              <Text style={styles.statNumber}>
-                {feedInventory.lastDeliveryDate.split("-")[2]}/
-                {feedInventory.lastDeliveryDate.split("-")[1]}
-              </Text>
-              <Text style={styles.statLabel}>Laatste levering</Text>
-            </Card.Content>
-          </Card>
-        </View>
-
-        {/* Period Selector */}
-        <SegmentedButtons
-          value={selectedPeriod}
-          onValueChange={setSelectedPeriod}
-          buttons={[
-            { value: "week", label: "Week" },
-            { value: "month", label: "Maand" },
-            { value: "year", label: "Jaar" },
-          ]}
-          style={styles.periodSelector}
-        />
-
-        {/* Recent Deliveries */}
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title style={styles.cardTitle}>
-              Recente Leveringen ({deliveries.length})
-            </Title>
-            {deliveries.map((delivery) => (
-              <View key={delivery.id}>
-                <TouchableOpacity style={styles.deliveryItem}>
-                  <View style={styles.deliveryHeader}>
-                    <View style={styles.deliveryLeft}>
-                      <Text style={styles.deliverySupplier}>
-                        {delivery.supplier}
-                      </Text>
-                      <Text style={styles.deliveryDate}>{delivery.date}</Text>
-                      {delivery.invoiceNumber && (
-                        <Text style={styles.deliveryInvoice}>
-                          Factuur: {delivery.invoiceNumber}
-                        </Text>
-                      )}
-                    </View>
-                    <Chip
-                      mode="flat"
-                      style={styles.deliveryStatusChip}
-                      textStyle={{ fontSize: 11 }}
-                      icon="check-circle"
-                    >
-                      {delivery.status}
-                    </Chip>
-                  </View>
-
-                  <View style={styles.deliveryDetails}>
-                    <View style={styles.deliveryDetailItem}>
-                      <IconButton
-                        icon="weight-kilogram"
-                        size={20}
-                        iconColor="#666666"
-                        style={styles.deliveryIcon}
-                      />
-                      <View>
-                        <Text style={styles.deliveryDetailLabel}>
-                          Hoeveelheid
-                        </Text>
-                        <Text style={styles.deliveryDetailValue}>
-                          {delivery.amount} kg
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.deliveryDetailItem}>
-                      <IconButton
-                        icon="cash"
-                        size={20}
-                        iconColor="#666666"
-                        style={styles.deliveryIcon}
-                      />
-                      <View>
-                        <Text style={styles.deliveryDetailLabel}>Prijs</Text>
-                        <Text style={styles.deliveryDetailValue}>
-                          €{delivery.pricePerKg}/kg
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.deliveryDetailItem}>
-                      <IconButton
-                        icon="calculator"
-                        size={20}
-                        iconColor="#666666"
-                        style={styles.deliveryIcon}
-                      />
-                      <View>
-                        <Text style={styles.deliveryDetailLabel}>Totaal</Text>
-                        <Text style={styles.deliveryDetailValueBold}>
-                          €{delivery.totalCost.toFixed(2)}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  {delivery.notes && (
-                    <View style={styles.deliveryNotes}>
-                      <Text style={styles.deliveryNotesText}>
-                        📝 {delivery.notes}
-                      </Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-                <Divider style={styles.deliveryDivider} />
-              </View>
-            ))}
-          </Card.Content>
-        </Card>
-
-        {/* Suppliers */}
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title style={styles.cardTitle}>
-              Leveranciers ({suppliers.length})
-            </Title>
-            {suppliers.map((supplier) => (
-              <TouchableOpacity
-                key={supplier.id}
-                style={styles.supplierItem}
-                onPress={() => orderNewFeed(supplier)}
-              >
-                <View style={styles.supplierHeader}>
-                  <IconButton
-                    icon="store"
-                    size={40}
-                    iconColor="#2E7D32"
-                    style={styles.supplierIcon}
-                  />
-                  <View style={styles.supplierInfo}>
-                    <Text style={styles.supplierName}>{supplier.name}</Text>
-                    <Text style={styles.supplierContact}>{supplier.phone}</Text>
-                    <Text style={styles.supplierContact}>{supplier.email}</Text>
-                  </View>
-                  <IconButton icon="chevron-right" iconColor="#2E7D32" />
-                </View>
-
-                <View style={styles.supplierDetails}>
-                  <View style={styles.supplierStat}>
-                    <Text style={styles.supplierStatValue}>
-                      €{supplier.pricePerKg}
-                    </Text>
-                    <Text style={styles.supplierStatLabel}>per kg</Text>
-                  </View>
-                  <View style={styles.supplierStat}>
-                    <Text style={styles.supplierStatValue}>
-                      {supplier.deliveryDays}
-                    </Text>
-                    <Text style={styles.supplierStatLabel}>Leverdagen</Text>
-                  </View>
-                  <View style={styles.supplierStat}>
-                    <Text style={styles.supplierStatValue}>
-                      {supplier.totalDeliveries}
-                    </Text>
-                    <Text style={styles.supplierStatLabel}>Leveringen</Text>
-                  </View>
-                  <View style={styles.supplierStat}>
-                    <Text style={styles.supplierStatValue}>
-                      {supplier.totalAmount}
-                    </Text>
-                    <Text style={styles.supplierStatLabel}>kg totaal</Text>
-                  </View>
-                </View>
-
-                <Divider style={styles.supplierDivider} />
-              </TouchableOpacity>
-            ))}
-          </Card.Content>
-        </Card>
-
-        {/* Consumption Chart */}
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title style={styles.cardTitle}>Verbruik Analyse</Title>
-            <View style={styles.analysisItem}>
-              <Text style={styles.analysisLabel}>Kosten per ei:</Text>
-              <Text style={styles.analysisValue}>
-                €
-                {(
-                  (feedInventory.averageDailyConsumption *
-                    parseFloat(deliveries[0]?.pricePerKg || 0.45)) /
-                  280
-                ).toFixed(3)}
-              </Text>
-            </View>
-            <View style={styles.analysisItem}>
-              <Text style={styles.analysisLabel}>
-                Voer conversie ratio (FCR):
-              </Text>
-              <Text style={styles.analysisValue}>2.1 kg voer/kg eieren</Text>
-            </View>
-            <View style={styles.analysisItem}>
-              <Text style={styles.analysisLabel}>Gemiddelde prijs:</Text>
-              <Text style={styles.analysisValue}>
-                €
-                {(
-                  deliveries.reduce((sum, d) => sum + d.pricePerKg, 0) /
-                  deliveries.length
-                ).toFixed(2)}
-                /kg
-              </Text>
-            </View>
-            <View style={styles.analysisItem}>
-              <Text style={styles.analysisLabel}>
-                Verwachte bestelling over:
-              </Text>
-              <Text
-                style={[
-                  styles.analysisValue,
-                  {
-                    color: stats.daysUntilEmpty < 7 ? "#FF9800" : "#4CAF50",
-                  },
-                ]}
-              >
-                {stats.daysUntilEmpty} dagen
-              </Text>
-            </View>
-          </Card.Content>
-        </Card>
-      </ScrollView>
-
-      {/* Add Delivery Modal */}
-      <Portal>
-        <Modal
-          visible={modalVisible}
-          onDismiss={() => setModalVisible(false)}
-          contentContainerStyle={styles.modal}
-        >
-          <ScrollView>
-            <Title style={styles.modalTitle}>Nieuwe Voerlevering</Title>
-
-            <TextInput
-              label="Datum *"
-              value={newDelivery.date}
-              onChangeText={(text) =>
-                setNewDelivery({ ...newDelivery, date: text })
-              }
-              style={styles.modalInput}
-              left={<TextInput.Icon icon="calendar" />}
-            />
-
-            <TouchableOpacity onPress={selectSupplierForDelivery}>
-              <TextInput
-                label="Leverancier *"
-                value={newDelivery.supplierName}
-                editable={false}
-                style={styles.modalInput}
-                left={<TextInput.Icon icon="store" />}
-                right={<TextInput.Icon icon="chevron-down" />}
-              />
-            </TouchableOpacity>
-
-            <TextInput
-              label="Hoeveelheid (kg) *"
-              value={newDelivery.amount}
-              onChangeText={(text) =>
-                setNewDelivery({ ...newDelivery, amount: text })
-              }
-              keyboardType="numeric"
-              style={styles.modalInput}
-              left={<TextInput.Icon icon="weight-kilogram" />}
-            />
-
-            <TextInput
-              label="Prijs per kg (€) *"
-              value={newDelivery.pricePerKg}
-              onChangeText={(text) =>
-                setNewDelivery({ ...newDelivery, pricePerKg: text })
-              }
-              keyboardType="decimal-pad"
-              style={styles.modalInput}
-              left={<TextInput.Icon icon="currency-eur" />}
-            />
-
-            {newDelivery.amount && newDelivery.pricePerKg && (
-              <View style={styles.totalCostDisplay}>
-                <Text style={styles.totalCostLabel}>Totale kosten:</Text>
-                <Text style={styles.totalCostValue}>
-                  €
-                  {(
-                    parseFloat(newDelivery.amount) *
-                    parseFloat(newDelivery.pricePerKg)
-                  ).toFixed(2)}
-                </Text>
-              </View>
-            )}
-
-            <TextInput
-              label="Factuurnummer"
-              value={newDelivery.invoiceNumber}
-              onChangeText={(text) =>
-                setNewDelivery({ ...newDelivery, invoiceNumber: text })
-              }
-              style={styles.modalInput}
-              left={<TextInput.Icon icon="file-document" />}
-            />
-
-            <TextInput
-              label="Notities"
-              value={newDelivery.notes}
-              onChangeText={(text) =>
-                setNewDelivery({ ...newDelivery, notes: text })
-              }
-              multiline
-              numberOfLines={3}
-              style={styles.modalInput}
-              left={<TextInput.Icon icon="note-text" />}
-            />
-
-            <View style={styles.modalButtons}>
-              <Button
-                mode="outlined"
-                onPress={() => setModalVisible(false)}
-                style={styles.modalButton}
-              >
-                Annuleren
-              </Button>
-              <Button
-                mode="contained"
-                onPress={addDelivery}
-                style={styles.modalButton}
-                buttonColor="#2E7D32"
-              >
-                Levering Toevoegen
-              </Button>
-            </View>
-          </ScrollView>
-        </Modal>
-      </Portal>
-
-      {/* FAB */}
       <FAB
         icon="plus"
         style={styles.fab}
-        onPress={() => setModalVisible(true)}
-        color="#fff"
+        onPress={() => setShowDialog(true)}
+        label="Nieuwe Levering"
       />
+
+      <Portal>
+        <Dialog visible={showDialog} onDismiss={() => setShowDialog(false)}>
+          <Dialog.Title>Nieuwe Voerlevering</Dialog.Title>
+          <Dialog.ScrollArea>
+            <View style={styles.dialogContent}>
+              <TextInput
+                label="Leverancier *"
+                value={newDelivery.supplier}
+                onChangeText={(text) =>
+                  setNewDelivery({ ...newDelivery, supplier: text })
+                }
+                style={styles.input}
+              />
+
+              <TextInput
+                label="Hoeveelheid (kg) *"
+                value={newDelivery.quantityKg}
+                onChangeText={(text) =>
+                  setNewDelivery({ ...newDelivery, quantityKg: text })
+                }
+                keyboardType="numeric"
+                style={styles.input}
+              />
+
+              <TextInput
+                label="Kosten (€)"
+                value={newDelivery.cost}
+                onChangeText={(text) =>
+                  setNewDelivery({ ...newDelivery, cost: text })
+                }
+                keyboardType="decimal-pad"
+                style={styles.input}
+              />
+
+              <TextInput
+                label="Notities"
+                value={newDelivery.notes}
+                onChangeText={(text) =>
+                  setNewDelivery({ ...newDelivery, notes: text })
+                }
+                multiline
+                numberOfLines={3}
+                style={styles.input}
+              />
+            </View>
+          </Dialog.ScrollArea>
+          <Dialog.Actions>
+            <Button onPress={() => setShowDialog(false)}>Annuleren</Button>
+            <Button onPress={handleCreateDelivery}>Aanmaken</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </View>
   );
 }
@@ -759,120 +309,68 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f5f5f5",
   },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
-  headerContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
   header: {
+    padding: 16,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+  },
+  title: {
     fontSize: 24,
     fontWeight: "bold",
     color: "#2E7D32",
   },
-  stockCard: {
-    marginBottom: 16,
-    elevation: 4,
-  },
-  stockHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  cardTitle: {
-    color: "#2E7D32",
-    fontSize: 18,
-  },
-  stockStatusChip: {
-    height: 32,
-  },
-  stockAmount: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  stockIcon: {
-    margin: 0,
-    marginRight: 12,
-  },
-  stockNumbers: {
-    flex: 1,
-  },
-  stockMainNumber: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#2E7D32",
-  },
-  stockSubtext: {
-    fontSize: 14,
-    color: "#666666",
-  },
-  progressBar: {
-    height: 12,
-    borderRadius: 6,
-    marginBottom: 16,
-  },
-  stockDetails: {
-    gap: 8,
-  },
-  stockDetailItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 4,
-  },
-  stockDetailLabel: {
-    fontSize: 14,
-    color: "#666666",
-  },
-  stockDetailValue: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#333333",
-  },
-  orderButton: {
-    marginTop: 16,
-  },
-  statsGrid: {
+  stallSelector: {
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "space-between",
+    gap: 8,
+    padding: 16,
+    backgroundColor: "#fff",
+  },
+  stallChip: {
+    marginBottom: 4,
+  },
+  inventoryCard: {
+    margin: 16,
+    marginTop: 0,
+    elevation: 4,
+  },
+  inventoryHeader: {
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 16,
   },
-  statCard: {
-    width: "48%",
-    marginBottom: 8,
-    elevation: 2,
-  },
-  statIcon: {
-    margin: 0,
-    alignSelf: "center",
-  },
-  statNumber: {
-    fontSize: 20,
+  inventoryTitle: {
+    fontSize: 18,
     fontWeight: "bold",
     color: "#2E7D32",
+    marginLeft: 12,
+  },
+  inventoryStats: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+  },
+  inventoryStat: {
+    alignItems: "center",
+  },
+  inventoryValue: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  inventoryLabel: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 4,
     textAlign: "center",
-    marginTop: -8,
   },
-  statLabel: {
-    fontSize: 11,
-    color: "#666666",
-    textAlign: "center",
+  listContainer: {
+    padding: 16,
+    paddingTop: 0,
   },
-  periodSelector: {
-    marginBottom: 16,
-  },
-  card: {
-    marginBottom: 16,
+  deliveryCard: {
+    marginBottom: 12,
     elevation: 2,
-  },
-  deliveryItem: {
-    paddingVertical: 12,
   },
   deliveryHeader: {
     flexDirection: "row",
@@ -880,181 +378,59 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     marginBottom: 12,
   },
-  deliveryLeft: {
-    flex: 1,
-  },
-  deliverySupplier: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#2E7D32",
-    marginBottom: 4,
-  },
-  deliveryDate: {
-    fontSize: 12,
-    color: "#666666",
-    marginBottom: 2,
-  },
-  deliveryInvoice: {
-    fontSize: 11,
-    color: "#999999",
-  },
-  deliveryStatusChip: {
-    backgroundColor: "#E8F5E9",
-    height: 28,
-  },
-  deliveryDetails: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  deliveryDetailItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  deliveryIcon: {
-    margin: 0,
-    marginRight: 4,
-  },
-  deliveryDetailLabel: {
-    fontSize: 10,
-    color: "#999999",
-  },
-  deliveryDetailValue: {
-    fontSize: 13,
-    color: "#333333",
-    fontWeight: "500",
-  },
-  deliveryDetailValueBold: {
-    fontSize: 14,
-    color: "#2E7D32",
-    fontWeight: "bold",
-  },
-  deliveryNotes: {
-    backgroundColor: "#FFF9E6",
-    padding: 8,
-    borderRadius: 6,
-    marginTop: 8,
-  },
-  deliveryNotesText: {
-    fontSize: 12,
-    color: "#666666",
-    fontStyle: "italic",
-  },
-  deliveryDivider: {
-    marginTop: 12,
-  },
-  supplierItem: {
-    marginBottom: 8,
-  },
-  supplierHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  supplierIcon: {
-    margin: 0,
-    marginRight: 8,
-  },
-  supplierInfo: {
+  deliveryInfo: {
     flex: 1,
   },
   supplierName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "bold",
-    color: "#2E7D32",
-    marginBottom: 2,
+    color: "#333",
+    marginBottom: 4,
   },
-  supplierContact: {
-    fontSize: 11,
-    color: "#666666",
+  deliveryDate: {
+    fontSize: 14,
+    color: "#666",
   },
-  supplierDetails: {
+  deliveryDetails: {
     flexDirection: "row",
-    justifyContent: "space-around",
-    marginTop: 12,
+    gap: 24,
     marginBottom: 8,
   },
-  supplierStat: {
+  detailRow: {
+    flexDirection: "row",
     alignItems: "center",
-  },
-  supplierStatValue: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#2E7D32",
-  },
-  supplierStatLabel: {
-    fontSize: 10,
-    color: "#666666",
-  },
-  supplierDivider: {
-    marginTop: 12,
-  },
-  analysisItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  analysisLabel: {
-    fontSize: 14,
-    color: "#666666",
-  },
-  analysisValue: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#2E7D32",
-  },
-  modal: {
-    backgroundColor: "white",
-    padding: 20,
-    margin: 20,
-    borderRadius: 12,
-    maxHeight: "90%",
-  },
-  modalTitle: {
-    color: "#2E7D32",
-    marginBottom: 16,
-    textAlign: "center",
-    fontSize: 20,
-  },
-  modalInput: {
-    marginBottom: 12,
-    backgroundColor: "white",
-  },
-  totalCostDisplay: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#E8F5E9",
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  totalCostLabel: {
-    fontSize: 16,
-    color: "#2E7D32",
-    fontWeight: "600",
-  },
-  totalCostValue: {
-    fontSize: 24,
-    color: "#2E7D32",
-    fontWeight: "bold",
-  },
-  modalButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 16,
     gap: 8,
   },
-  modalButton: {
-    flex: 1,
+  detailText: {
+    fontSize: 16,
+    color: "#333",
+  },
+  notes: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 8,
+    fontStyle: "italic",
+  },
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "#999",
+    marginTop: 16,
   },
   fab: {
     position: "absolute",
-    margin: 16,
-    right: 0,
-    bottom: 0,
+    right: 16,
+    bottom: 16,
     backgroundColor: "#2E7D32",
+  },
+  dialogContent: {
+    padding: 16,
+  },
+  input: {
+    marginBottom: 12,
   },
 });

@@ -1,29 +1,55 @@
-import api, { setToken, removeToken } from "./api";
+import api from "./api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export const authService = {
-  login: async (username, password) => {
-    const response = await api.post("/auth/login", { username, password });
-    if (response.data.token) {
-      await setToken(response.data.token);
+const authService = {
+  async login(username, password) {
+    try {
+      const response = await api.post("/auth/login", {
+        username,
+        password,
+      });
+
+      if (response.data) {
+        await AsyncStorage.setItem("user", JSON.stringify(response.data));
+        if (response.data.token) {
+          await AsyncStorage.setItem("token", response.data.token);
+        }
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error("Login error:", error);
+      throw new Error(
+        error.response?.data?.message || "Ongeldige inloggegevens"
+      );
     }
-    return response.data;
   },
 
-  register: async (username, email, password) => {
-    const response = await api.post("/auth/register", {
-      username,
-      email,
-      password,
-    });
-    if (response.data.token) {
-      await setToken(response.data.token);
+  async logout() {
+    try {
+      await api.post("/auth/logout");
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      await AsyncStorage.removeItem("token");
+      await AsyncStorage.removeItem("user");
     }
-    return response.data;
   },
 
-  logout: async () => {
-    // Optional: Call backend logout if needed
-    // await api.post('/auth/logout', { refreshToken: ... });
-    await removeToken();
+  async checkAuth() {
+    try {
+      const user = await AsyncStorage.getItem("user");
+      if (!user) return null;
+
+      const response = await api.get("/auth/me");
+      return response.data;
+    } catch (error) {
+      console.error("Check auth error:", error);
+      await AsyncStorage.removeItem("token");
+      await AsyncStorage.removeItem("user");
+      return null;
+    }
   },
 };
+
+export default authService;

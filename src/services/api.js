@@ -1,65 +1,40 @@
 import axios from "axios";
-import { Platform } from "react-native";
-import * as SecureStore from "expo-secure-store";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// Helper to get token safely on web vs native
-const getToken = async () => {
-  if (Platform.OS === "web") {
-    return localStorage.getItem("userToken");
-  } else {
-    return await SecureStore.getItemAsync("userToken");
-  }
-};
-
-// Helper to set token
-export const setToken = async (token) => {
-  if (Platform.OS === "web") {
-    localStorage.setItem("userToken", token);
-  } else {
-    await SecureStore.setItemAsync("userToken", token);
-  }
-};
-
-// Helper to remove token
-export const removeToken = async () => {
-  if (Platform.OS === "web") {
-    localStorage.removeItem("userToken");
-  } else {
-    await SecureStore.deleteItemAsync("userToken");
-  }
-};
-
-// Base URL from environment or default
-const API_BASE_URL = "http://192.168.0.202:8080/api";
-// const API_BASE_URL =
-//   process.env.EXPO_PUBLIC_API_BASE || "http://localhost:8080/api";
+// REPLACE WITH YOUR ACTUAL IP ADDRESS FROM ipconfig
+const API_BASE_URL = "http://192.168.0.202:8080/api"; // CHANGE THIS!
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 10000,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Request interceptor to add Auth Token
+// Request interceptor
 api.interceptors.request.use(
   async (config) => {
-    const token = await getToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch (error) {
+      console.error("Error getting token:", error);
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Response interceptor to handle 401 (Unauthorized)
+// Response interceptor
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response && error.response.status === 401) {
-      // Optional: Trigger logout or refresh token logic here
-      await removeToken();
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      await AsyncStorage.removeItem("token");
+      await AsyncStorage.removeItem("user");
     }
     return Promise.reject(error);
   }

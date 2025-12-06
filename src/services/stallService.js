@@ -1,53 +1,68 @@
 import api from "./api";
 
 const stallService = {
-  getAll: async () => {
-    const response = await api.get("/stalls");
-    return response.data;
+  async listStalls() {
+    try {
+      const response = await api.get("/stalls");
+      return response.data;
+    } catch (error) {
+      console.error("Error listing stalls:", error);
+      throw error;
+    }
   },
 
-  // Alias for listStalls used in screens
-  listStalls: async () => {
-    const response = await api.get("/stalls");
-    return response.data;
+  async getStall(id) {
+    try {
+      const response = await api.get(`/stalls/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error getting stall:", error);
+      throw error;
+    }
   },
 
-  getById: async (id) => {
-    const response = await api.get(`/stalls/${id}`);
-    return response.data;
+  async createStall(stallData) {
+    try {
+      const response = await api.post("/stalls", {
+        name: stallData.name,
+        breed: stallData.breed || null,
+        capacity: stallData.capacity,
+        initialChickenCount:
+          stallData.initialChickenCount || stallData.capacity, // Default to capacity if not specified
+        notes: stallData.notes || null,
+        active: stallData.active !== undefined ? stallData.active : true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error creating stall:", error);
+      throw error;
+    }
   },
 
-  create: async (stallData) => {
-    const response = await api.post("/stalls", stallData);
-    return response.data;
+  async updateStall(id, stallData) {
+    try {
+      const response = await api.put(`/stalls/${id}`, {
+        name: stallData.name,
+        breed: stallData.breed || null,
+        capacity: stallData.capacity,
+        notes: stallData.notes || null,
+        active: stallData.active !== undefined ? stallData.active : true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error updating stall:", error);
+      throw error;
+    }
   },
 
-  // Alias for createStall used in screens
-  createStall: async (stallData) => {
-    const response = await api.post("/stalls", stallData);
-    return response.data;
-  },
-
-  update: async (id, stallData) => {
-    const response = await api.put(`/stalls/${id}`, stallData);
-    return response.data;
-  },
-
-  // Alias for updateStall used in screens
-  updateStall: async (id, stallData) => {
-    const response = await api.put(`/stalls/${id}`, stallData);
-    return response.data;
-  },
-
-  delete: async (id) => {
-    await api.delete(`/stalls/${id}`);
-  },
-
-  // Alias for deleteStall used in screens
-  deleteStall: async (id) => {
-    await api.delete(`/stalls/${id}`);
+  async deleteStall(id) {
+    try {
+      await api.delete(`/stalls/${id}`);
+    } catch (error) {
+      console.error("Error deleting stall:", error);
+      throw error;
+    }
   },
 };
 
-export { stallService };
 export default stallService;

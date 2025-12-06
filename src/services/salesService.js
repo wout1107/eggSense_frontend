@@ -1,39 +1,80 @@
 import api from "./api";
 
 const salesService = {
-  getAll: async (params) => {
-    // params: { start, end, status }
-    const response = await api.get("/sales", { params });
-    return response.data;
+  async listOrders(filters = {}) {
+    try {
+      const response = await api.get("/sales", { params: filters });
+      return response.data;
+    } catch (error) {
+      console.error("Error listing orders:", error);
+      throw error;
+    }
   },
 
-  // Alias for listOrders used in SalesScreen
-  listOrders: async (params) => {
-    const response = await api.get("/sales", { params });
-    return response.data;
+  async getOrder(id) {
+    try {
+      const response = await api.get(`/sales/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error getting order:", error);
+      throw error;
+    }
   },
 
-  getById: async (id) => {
-    const response = await api.get(`/sales/${id}`);
-    return response.data;
+  async createOrder(orderData) {
+    try {
+      const response = await api.post("/sales", {
+        customerId: orderData.customerId,
+        eggsSmall: orderData.eggsSmall || 0,
+        eggsMedium: orderData.eggsMedium || 0,
+        eggsLarge: orderData.eggsLarge || 0,
+        eggsRejected: orderData.eggsRejected || 0,
+        totalPrice: orderData.totalPrice || 0, // 0 triggers auto-calculation
+        notes: orderData.notes || null,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error creating order:", error);
+      throw error;
+    }
   },
 
-  create: async (saleData) => {
-    const response = await api.post("/sales", saleData);
-    return response.data;
+  async updateOrder(id, orderData) {
+    try {
+      const response = await api.put(`/sales/${id}`, {
+        customerId: orderData.customerId,
+        eggsSmall: orderData.eggsSmall || 0,
+        eggsMedium: orderData.eggsMedium || 0,
+        eggsLarge: orderData.eggsLarge || 0,
+        eggsRejected: orderData.eggsRejected || 0,
+        totalPrice: orderData.totalPrice || 0, // 0 triggers auto-calculation
+        notes: orderData.notes || null,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error updating order:", error);
+      throw error;
+    }
   },
 
-  // Alias for createOrder used in SalesScreen
-  createOrder: async (saleData) => {
-    const response = await api.post("/sales", saleData);
-    return response.data;
+  async updateStatus(id, status) {
+    try {
+      const response = await api.patch(`/sales/${id}/status`, { status });
+      return response.data;
+    } catch (error) {
+      console.error("Error updating order status:", error);
+      throw error;
+    }
   },
 
-  updateStatus: async (id, status) => {
-    const response = await api.patch(`/sales/${id}/status`, { status });
-    return response.data;
+  async deleteOrder(id) {
+    try {
+      await api.delete(`/sales/${id}`);
+    } catch (error) {
+      console.error("Error deleting order:", error);
+      throw error;
+    }
   },
 };
 
-export { salesService };
 export default salesService;

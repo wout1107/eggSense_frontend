@@ -1,551 +1,587 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
+  StyleSheet,
+  RefreshControl,
   Dimensions,
-  TouchableOpacity,
-  RefreshControl, // Add RefreshControl
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import {
   Card,
-  Title,
-  Paragraph,
   Button,
-  IconButton,
   ProgressBar,
-  Menu,
-  Divider,
-  ActivityIndicator, // Add ActivityIndicator
   Chip,
+  IconButton,
+  Divider,
 } from "react-native-paper";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
-// Import services
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import stallService from "../services/stallService";
 import productionService from "../services/productionService";
 import salesService from "../services/salesService";
+import api from "../services/api";
 
 const { width } = Dimensions.get("window");
 
-export default function DashboardScreen() {
-  const navigation = useNavigation();
-  const [selectedFarm, setSelectedFarm] = useState(null); // Changed default to null
-  const [farmMenuVisible, setFarmMenuVisible] = useState(false);
-  const [loading, setLoading] = useState(true);
+export default function DashboardScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
-  const [dashboardData, setDashboardData] = useState({
-    farms: {}, // We will map backend stalls to this structure
-    weeklyProduction: [],
-    alerts: [],
-    quickStats: {
-      weeklyRevenue: 0,
-      weeklyProfit: 0,
-      totalInventory: 0,
-      feedConversion: 0,
-    },
-  });
+  const [stalls, setStalls] = useState([]);
+  const [selectedStall, setSelectedStall] = useState(null);
+  const [weeklyProduction, setWeeklyProduction] = useState([]);
+  const [todayProduction, setTodayProduction] = useState(null);
+  const [weekStats, setWeekStats] = useState(null);
+  const [inventory, setInventory] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const loadDashboardData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
+      // Load all stalls
+      const stallsData = await stallService.listStalls();
+      const activeStalls = stallsData.filter((s) => s.active);
+      setStalls(activeStalls.length > 0 ? activeStalls : stallsData);
 
-      // 1. Fetch Stalls
-      const stalls = await stallService.listStalls();
-
-      // 2. Fetch Stats (You might need to create a specific endpoint for dashboard stats)
-      // For now, we'll simulate aggregating data or fetch individual stats if available
-      const productionStats = await productionService
-        .getDailyProduction(new Date().toISOString().split("T")[0])
-        .catch(() => null);
-
-      // Transform backend list to frontend object structure
-      const farmsMap = {};
-      stalls.forEach((stall) => {
-        farmsMap[stall.id] = {
-          id: stall.id,
-          name: stall.name,
-          age: stall.age || 0,
-          totalChickens: stall.capacity || 0,
-          activeChickens: stall.currentStock || 0,
-          dailyStats: {
-            totalEggs: productionStats?.totalEggs || 0,
-            productionPercentage: productionStats?.percentage || 0,
-            feedConsumption: productionStats?.feedKg || 0,
-            waterConsumption: productionStats?.waterLiters || 0,
-          },
-        };
-      });
-
-      // Set selected farm if not set
-      if (!selectedFarm && stalls.length > 0) {
-        setSelectedFarm(stalls[0].id);
+      // Select first active stall by default
+      const activeStall =
+        activeStalls.length > 0 ? activeStalls[0] : stallsData[0];
+      if (activeStall) {
+        setSelectedStall(activeStall);
+        await loadStallData(activeStall.id);
       }
-
-      setDashboardData((prev) => ({
-        ...prev,
-        farms: farmsMap,
-        // You would fetch these from salesService/productionService
-        quickStats: {
-          weeklyRevenue: 1250.0, // Placeholder until backend calc available
-          weeklyProfit: 850.0,
-          totalInventory: 4500,
-          feedConversion: 2.1,
-        },
-      }));
     } catch (error) {
       console.error("Error loading dashboard:", error);
+      Alert.alert("Fout", "Kon dashboardgegevens niet ophalen");
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
+  }, []);
+
+  const loadStallData = async (stallId) => {
+    try {
+      // Load today's production
+      const today = new Date().toISOString().split("T")[0];
+      try {
+        const todayData = await productionService.getDailyProduction(
+          today,
+          stallId
+        );
+        setTodayProduction(todayData);
+      } catch (err) {
+        setTodayProduction(null);
+      }
+
+      // Load last 7 days production
+      const productions = await productionService.listForStall(stallId);
+      const last7Days = productions.slice(0, 7).reverse();
+      setWeeklyProduction(last7Days);
+
+      // Calculate week statistics
+      calculateWeekStats(productions.slice(0, 7));
+
+      // Load inventory
+      try {
+        const invResponse = await api.get(
+          `/feed-deliveries/stall/${stallId}/inventory`
+        );
+        setInventory(invResponse.data);
+      } catch (err) {
+        setInventory(null);
+      }
+    } catch (error) {
+      console.error("Error loading stall production:", error);
+    }
+  };
+
+  const calculateWeekStats = (weekData) => {
+    if (weekData.length === 0) {
+      setWeekStats(null);
+      return;
+    }
+
+    const totalEggs = weekData.reduce(
+      (sum, day) =>
+        sum +
+        (day.eggsSmall || 0) +
+        (day.eggsMedium || 0) +
+        (day.eggsLarge || 0),
+      0
+    );
+    const avgEggsPerDay = totalEggs / weekData.length;
+    const totalFeed = weekData.reduce((sum, day) => sum + (day.feedKg || 0), 0);
+    const totalMortality = weekData.reduce(
+      (sum, day) => sum + (day.mortality || 0),
+      0
+    );
+
+    setWeekStats({
+      totalEggs,
+      avgEggsPerDay,
+      totalFeed,
+      totalMortality,
+    });
   };
 
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    loadData();
+  }, [loadData]);
 
-  const onRefresh = () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    loadDashboardData();
+    await loadData();
+    setRefreshing(false);
+  }, [loadData]);
+
+  const handleStallChange = async (stall) => {
+    setSelectedStall(stall);
+    await loadStallData(stall.id);
   };
 
-  const currentFarm = selectedFarm ? dashboardData.farms[selectedFarm] : null;
-
-  const getStatusColor = (percentage) => {
-    if (percentage >= 85) return "#4CAF50"; // Green
-    if (percentage >= 70) return "#FF9800"; // Orange
-    return "#F44336"; // Red
-  };
-
-  const getAlertColor = (type) => {
-    switch (type) {
-      case "warning":
-        return "#FF9800";
-      case "success":
-        return "#4CAF50";
-      case "info":
-        return "#2196F3";
-      case "error":
-        return "#F44336";
-      default:
-        return "#666666";
-    }
-  };
-
-  const calculateWeeklyTotal = () => {
-    return dashboardData.weeklyProduction.reduce(
-      (acc, day) => acc + day.stal1 + day.stal2,
-      0
+  const getTotalEggs = (production) => {
+    if (!production) return 0;
+    return (
+      (production.eggsSmall || 0) +
+      (production.eggsMedium || 0) +
+      (production.eggsLarge || 0)
     );
   };
 
-  const calculateWeeklyTarget = () => {
-    return dashboardData.weeklyProduction.reduce(
-      (acc, day) => acc + day.target,
-      0
+  const renderStallSelector = () => {
+    if (stalls.length === 0) {
+      return (
+        <Card style={styles.warningCard}>
+          <Card.Content>
+            <View style={styles.warningContent}>
+              <Icon name="alert-circle" size={48} color="#FF9800" />
+              <Text style={styles.warningTitle}>Geen Stallen Gevonden</Text>
+              <Text style={styles.warningText}>
+                Maak eerst een stal aan om te beginnen met het bijhouden van
+                productiegegevens.
+              </Text>
+              <Button
+                mode="contained"
+                onPress={() => navigation.navigate("Settings")}
+                style={styles.warningButton}
+                buttonColor="#2E7D32"
+                icon="cog"
+              >
+                Naar Instellingen
+              </Button>
+            </View>
+          </Card.Content>
+        </Card>
+      );
+    }
+
+    if (stalls.length === 1) {
+      return null; // Don't show selector if only one stall
+    }
+
+    return (
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.stallSelector}
+        contentContainerStyle={styles.stallSelectorContent}
+      >
+        {stalls.map((stall) => (
+          <Chip
+            key={stall.id}
+            selected={selectedStall?.id === stall.id}
+            onPress={() => handleStallChange(stall)}
+            style={[
+              styles.stallChip,
+              selectedStall?.id === stall.id && styles.stallChipSelected,
+            ]}
+            textStyle={styles.stallChipText}
+            mode={selectedStall?.id === stall.id ? "flat" : "outlined"}
+          >
+            {stall.name}
+          </Chip>
+        ))}
+      </ScrollView>
     );
   };
 
-  const handleAlertPress = (alert) => {
-    if (alert.action) {
-      navigation.navigate(alert.action);
-    }
+  const renderCurrentStallInfo = () => {
+    if (!selectedStall) return null;
+
+    const activeChickens = selectedStall.currentChickenCount || 0;
+    const totalChickens = selectedStall.capacity || 0;
+    const utilizationPercent =
+      totalChickens > 0 ? (activeChickens / totalChickens) * 100 : 0;
+
+    return (
+      <Card style={styles.card}>
+        <Card.Content>
+          <View style={styles.stallHeader}>
+            <View style={styles.stallHeaderLeft}>
+              <Icon name="barn" size={32} color="#2E7D32" />
+              <View style={styles.stallInfo}>
+                <Text style={styles.stallName}>{selectedStall.name}</Text>
+                {selectedStall.breed && (
+                  <Text style={styles.stallBreed}>{selectedStall.breed}</Text>
+                )}
+              </View>
+            </View>
+            {!selectedStall.active && (
+              <Chip
+                mode="flat"
+                style={styles.inactiveChip}
+                textStyle={{ fontSize: 11 }}
+              >
+                Inactief
+              </Chip>
+            )}
+          </View>
+
+          <View style={styles.capacitySection}>
+            <View style={styles.capacityHeader}>
+              <Text style={styles.capacityLabel}>Bezetting</Text>
+              <Text style={styles.capacityValue}>
+                {activeChickens} / {totalChickens} kippen
+              </Text>
+            </View>
+            <ProgressBar
+              progress={totalChickens > 0 ? activeChickens / totalChickens : 0}
+              color={utilizationPercent > 90 ? "#4CAF50" : "#FF9800"}
+              style={styles.progressBar}
+            />
+            <Text style={styles.capacityPercentage}>
+              {utilizationPercent.toFixed(1)}% bezet
+            </Text>
+          </View>
+        </Card.Content>
+      </Card>
+    );
   };
 
-  const renderMiniChart = () => {
+  const renderTodayStats = () => {
+    const todayEggs = getTotalEggs(todayProduction);
+    const hasData = todayProduction !== null;
+
+    return (
+      <Card style={styles.card}>
+        <Card.Title
+          title="Vandaag"
+          subtitle={new Date().toLocaleDateString("nl-NL", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+          })}
+          left={(props) => <Icon {...props} name="calendar-today" size={24} />}
+        />
+        <Card.Content>
+          {!hasData ? (
+            <View style={styles.noDataContainer}>
+              <Icon name="information-outline" size={48} color="#ccc" />
+              <Text style={styles.noDataText}>
+                Nog geen gegevens ingevoerd voor vandaag
+              </Text>
+              <Button
+                mode="outlined"
+                onPress={() =>
+                  navigation.navigate("DailyInput", {
+                    selectedStallId: selectedStall?.id,
+                  })
+                }
+                style={styles.inputButton}
+                icon="plus"
+              >
+                Gegevens Invoeren
+              </Button>
+            </View>
+          ) : (
+            <View style={styles.statsGrid}>
+              <View style={styles.statBox}>
+                <Icon name="egg" size={32} color="#FF9800" />
+                <Text style={styles.statValue}>{todayEggs}</Text>
+                <Text style={styles.statLabel}>Eieren</Text>
+              </View>
+              <View style={styles.statBox}>
+                <Icon name="food-drumstick" size={32} color="#2196F3" />
+                <Text style={styles.statValue}>
+                  {todayProduction.feedKg || 0}
+                </Text>
+                <Text style={styles.statLabel}>Voer (kg)</Text>
+              </View>
+              <View style={styles.statBox}>
+                <Icon name="water" size={32} color="#00BCD4" />
+                <Text style={styles.statValue}>
+                  {todayProduction.waterLiters || 0}
+                </Text>
+                <Text style={styles.statLabel}>Water (L)</Text>
+              </View>
+              {todayProduction.mortality > 0 && (
+                <View style={styles.statBox}>
+                  <Icon name="alert-circle" size={32} color="#F44336" />
+                  <Text style={styles.statValue}>
+                    {todayProduction.mortality}
+                  </Text>
+                  <Text style={styles.statLabel}>Uitval</Text>
+                </View>
+              )}
+            </View>
+          )}
+        </Card.Content>
+      </Card>
+    );
+  };
+
+  const renderWeeklyChart = () => {
+    if (weeklyProduction.length === 0) {
+      return (
+        <Card style={styles.card}>
+          <Card.Title
+            title="Week Overzicht"
+            left={(props) => <Icon {...props} name="chart-line" size={24} />}
+          />
+          <Card.Content>
+            <View style={styles.noDataContainer}>
+              <Icon name="chart-line-variant" size={48} color="#ccc" />
+              <Text style={styles.noDataText}>
+                Geen productiegegevens beschikbaar voor deze week
+              </Text>
+            </View>
+          </Card.Content>
+        </Card>
+      );
+    }
+
     const maxValue = Math.max(
-      ...dashboardData.weeklyProduction.map((d) => d.stal1 + d.stal2)
+      ...weeklyProduction.map((d) => getTotalEggs(d)),
+      1
     );
 
     return (
-      <View style={styles.chartContainer}>
-        {dashboardData.weeklyProduction.map((item, index) => {
-          const total = item.stal1 + item.stal2;
-          // FIX: Check if maxValue is > 0 to avoid division by zero (NaN)
-          const height = maxValue > 0 ? (total / maxValue) * 80 : 0;
-          const isToday = index === new Date().getDay() - 1; // Adjust for Monday start
+      <Card style={styles.card}>
+        <Card.Title
+          title="Week Overzicht"
+          subtitle={`${weeklyProduction.length} dagen gegevens`}
+          left={(props) => <Icon {...props} name="chart-line" size={24} />}
+        />
+        <Card.Content>
+          <View style={styles.chartContainer}>
+            {weeklyProduction.map((item, index) => {
+              const total = getTotalEggs(item);
+              const height = maxValue > 0 ? (total / maxValue) * 100 : 0;
+              const date = new Date(item.recordDate);
+              const dayName = ["Zo", "Ma", "Di", "Wo", "Do", "Vr", "Za"][
+                date.getDay()
+              ];
+              const isToday =
+                date.toISOString().split("T")[0] ===
+                new Date().toISOString().split("T")[0];
 
-          return (
-            <View key={index} style={styles.barContainer}>
-              <View
-                style={[
-                  styles.bar,
-                  {
-                    height: height,
-                    backgroundColor:
-                      total >= item.target ? "#4CAF50" : "#FF9800",
-                    opacity: isToday ? 1 : 0.7,
-                  },
-                ]}
-              />
-              <Text
-                style={[
-                  styles.barLabel,
-                  { fontWeight: isToday ? "bold" : "normal" },
-                ]}
-              >
-                {item.day}
-              </Text>
-              <Text style={styles.barValue}>{total}</Text>
-            </View>
-          );
-        })}
-      </View>
+              return (
+                <View key={index} style={styles.barContainer}>
+                  <View
+                    style={[
+                      styles.bar,
+                      {
+                        height: Math.max(height, 2),
+                        backgroundColor: isToday ? "#2E7D32" : "#4CAF50",
+                      },
+                    ]}
+                  >
+                    {height > 20 && (
+                      <Text style={styles.barValueInside}>{total}</Text>
+                    )}
+                  </View>
+                  {height <= 20 && total > 0 && (
+                    <Text style={styles.barValueOutside}>{total}</Text>
+                  )}
+                  <Text
+                    style={[styles.barLabel, isToday && styles.barLabelToday]}
+                  >
+                    {dayName}
+                  </Text>
+                  <Text style={styles.barDate}>
+                    {date.getDate()}/{date.getMonth() + 1}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+
+          {weekStats && (
+            <>
+              <Divider style={styles.divider} />
+              <View style={styles.weekStatsContainer}>
+                <View style={styles.weekStatItem}>
+                  <Text style={styles.weekStatLabel}>Totaal Eieren</Text>
+                  <Text style={styles.weekStatValue}>
+                    {weekStats.totalEggs}
+                  </Text>
+                </View>
+                <View style={styles.weekStatItem}>
+                  <Text style={styles.weekStatLabel}>Gemiddeld/Dag</Text>
+                  <Text style={styles.weekStatValue}>
+                    {weekStats.avgEggsPerDay.toFixed(0)}
+                  </Text>
+                </View>
+                <View style={styles.weekStatItem}>
+                  <Text style={styles.weekStatLabel}>Totaal Voer</Text>
+                  <Text style={styles.weekStatValue}>
+                    {weekStats.totalFeed.toFixed(0)} kg
+                  </Text>
+                </View>
+              </View>
+            </>
+          )}
+        </Card.Content>
+      </Card>
     );
   };
 
-  if (loading && !refreshing) {
+  const renderInventoryAlert = () => {
+    if (!inventory || !inventory.daysRemaining || inventory.daysRemaining > 7)
+      return null;
+
+    const isLow = inventory.daysRemaining <= 3;
+    const isCritical = inventory.daysRemaining <= 1;
+    const currentStock = inventory.currentStock || 0;
+    const daysRemaining = inventory.daysRemaining || 0;
+
+    return (
+      <Card
+        style={[
+          styles.alertCard,
+          {
+            backgroundColor: isCritical
+              ? "#FFEBEE"
+              : isLow
+              ? "#FFF3E0"
+              : "#E8F5E9",
+          },
+        ]}
+      >
+        <Card.Content>
+          <View style={styles.alertContent}>
+            <Icon
+              name={isCritical ? "alert-circle" : "information"}
+              size={32}
+              color={isCritical ? "#F44336" : isLow ? "#FF9800" : "#4CAF50"}
+            />
+            <View style={styles.alertText}>
+              <Text style={styles.alertTitle}>
+                {isCritical
+                  ? "Kritiek Voerniveau!"
+                  : isLow
+                  ? "Lage Voervoorraad"
+                  : "Voervoorraad Normaal"}
+              </Text>
+              <Text style={styles.alertDescription}>
+                Nog {currentStock.toFixed(0)} kg voer beschikbaar (circa{" "}
+                {daysRemaining.toFixed(0)} dagen)
+              </Text>
+            </View>
+          </View>
+        </Card.Content>
+      </Card>
+    );
+  };
+
+  const renderQuickActions = () => (
+    <Card style={styles.card}>
+      <Card.Title
+        title="Snelle Acties"
+        left={(props) => <Icon {...props} name="lightning-bolt" size={24} />}
+      />
+      <Card.Content>
+        <View style={styles.actionsGrid}>
+          <Button
+            mode="contained"
+            icon="plus-circle"
+            onPress={() =>
+              navigation.navigate("DailyInput", {
+                selectedStallId: selectedStall?.id,
+              })
+            }
+            style={styles.actionButton}
+            buttonColor="#2E7D32"
+          >
+            Dagelijkse Invoer
+          </Button>
+          <Button
+            mode="outlined"
+            icon="chart-bar"
+            onPress={() => navigation.navigate("Reports")}
+            style={styles.actionButton}
+          >
+            Rapporten
+          </Button>
+          <Button
+            mode="outlined"
+            icon="cart"
+            onPress={() => navigation.navigate("Sales")}
+            style={styles.actionButton}
+          >
+            Verkoop
+          </Button>
+          <Button
+            mode="outlined"
+            icon="truck-delivery"
+            onPress={() => navigation.navigate("FeedDelivery")}
+            style={styles.actionButton}
+          >
+            Voerleveringen
+          </Button>
+        </View>
+      </Card.Content>
+    </Card>
+  );
+
+  if (loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#2E7D32" />
-        <Text style={{ marginTop: 10 }}>Dashboard laden...</Text>
-      </View>
-    );
-  }
-
-  if (!currentFarm) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text>Geen stallen gevonden. Voeg eerst een stal toe.</Text>
-        <Button
-          mode="contained"
-          onPress={() => navigation.navigate("Settings")}
-          style={{ marginTop: 20 }}
-        >
-          Stal Toevoegen
-        </Button>
+        <Text style={styles.loadingText}>Dashboard laden...</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          colors={["#2E7D32"]}
-        />
-      }
-    >
-      {/* Header with Farm Selection */}
-      <View style={styles.headerContainer}>
-        <View>
-          <Text style={styles.header}>Dashboard</Text>
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Text style={styles.greeting}>Dashboard</Text>
           <Text style={styles.date}>
-            {new Date().toLocaleDateString("nl-NL")}
+            {new Date().toLocaleDateString("nl-NL", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })}
           </Text>
         </View>
-        <Menu
-          visible={farmMenuVisible}
-          onDismiss={() => setFarmMenuVisible(false)}
-          anchor={
-            <Button
-              mode="outlined"
-              onPress={() => setFarmMenuVisible(true)}
-              icon="chevron-down"
-              compact
-            >
-              {currentFarm?.name}
-            </Button>
+        <IconButton
+          icon="plus-circle"
+          size={32}
+          iconColor="#fff"
+          onPress={() =>
+            navigation.navigate("DailyInput", {
+              selectedStallId: selectedStall?.id,
+            })
           }
-        >
-          {Object.values(dashboardData.farms).map((farm) => (
-            <Menu.Item
-              key={farm.id}
-              onPress={() => {
-                setSelectedFarm(farm.id);
-                setFarmMenuVisible(false);
-              }}
-              title={farm.name}
-            />
-          ))}
-          <Divider />
-          <Menu.Item
-            onPress={() => {
-              setFarmMenuVisible(false);
-              navigation.navigate("Settings");
-            }}
-            title="Stallen Beheren"
-            leadingIcon="cog"
-          />
-        </Menu>
+        />
       </View>
 
-      {/* Quick Actions */}
-      <Card style={styles.quickActionsCard}>
-        <Card.Content>
-          <Title style={styles.cardTitle}>Snelle Acties</Title>
-          <View style={styles.quickActionsGrid}>
-            <TouchableOpacity
-              style={styles.quickAction}
-              onPress={() => navigation.navigate("Input")}
-            >
-              <IconButton icon="plus-circle" size={24} iconColor="#2E7D32" />
-              <Text style={styles.quickActionText}>Dagelijkse Invoer</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.quickAction}
-              onPress={() => navigation.navigate("Sales")}
-            >
-              <IconButton icon="cash-register" size={24} iconColor="#2E7D32" />
-              <Text style={styles.quickActionText}>Nieuwe Verkoop</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.quickAction}
-              onPress={() => navigation.navigate("Reports")}
-            >
-              <IconButton icon="chart-line" size={24} iconColor="#2E7D32" />
-              <Text style={styles.quickActionText}>Rapporten</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.quickAction}
-              onPress={() => navigation.navigate("Feed")}
-            >
-              <IconButton icon="nutrition" size={24} iconColor="#2E7D32" />
-              <Text style={styles.quickActionText}>Voer Beheer</Text>
-            </TouchableOpacity>
-          </View>
-        </Card.Content>
-      </Card>
-
-      {/* Current Farm Stats */}
-      <Card style={styles.farmInfoCard}>
-        <Card.Content>
-          <View style={styles.farmHeader}>
-            <Title style={styles.cardTitle}>{currentFarm.name}</Title>
-            <Chip mode="outlined">{currentFarm.age} weken oud</Chip>
-          </View>
-          <View style={styles.farmDetails}>
-            <Text style={styles.farmDetailText}>
-              Actieve hennen: {currentFarm.activeChickens}/
-              {currentFarm.totalChickens}
-            </Text>
-            <ProgressBar
-              // FIX: Check if totalChickens > 0 to avoid NaN (0/0)
-              progress={
-                currentFarm.totalChickens > 0
-                  ? currentFarm.activeChickens / currentFarm.totalChickens
-                  : 0
-              }
-              color="#4CAF50"
-              style={styles.progressBar}
-            />
-          </View>
-        </Card.Content>
-      </Card>
-
-      {/* Today's Production Stats */}
-      <View style={styles.statsGrid}>
-        <Card style={styles.statCard}>
-          <Card.Content>
-            <Title style={styles.statNumber}>
-              {currentFarm.dailyStats.totalEggs}
-            </Title>
-            <Paragraph style={styles.statLabel}>Eieren Vandaag</Paragraph>
-          </Card.Content>
-        </Card>
-
-        <Card style={styles.statCard}>
-          <Card.Content>
-            <Title
-              style={[
-                styles.statNumber,
-                {
-                  color: getStatusColor(
-                    currentFarm.dailyStats.productionPercentage
-                  ),
-                },
-              ]}
-            >
-              {currentFarm.dailyStats.productionPercentage}%
-            </Title>
-            <Paragraph style={styles.statLabel}>Productie</Paragraph>
-          </Card.Content>
-        </Card>
-
-        <Card style={styles.statCard}>
-          <Card.Content>
-            <Title style={styles.statNumber}>
-              {currentFarm.dailyStats.feedConsumption}kg
-            </Title>
-            <Paragraph style={styles.statLabel}>Voer Verbruik</Paragraph>
-          </Card.Content>
-        </Card>
-
-        <Card style={styles.statCard}>
-          <Card.Content>
-            <Title style={styles.statNumber}>
-              {currentFarm.dailyStats.waterConsumption}L
-            </Title>
-            <Paragraph style={styles.statLabel}>Water Verbruik</Paragraph>
-          </Card.Content>
-        </Card>
-      </View>
-
-      {/* Weekly Production Chart */}
-      <Card style={styles.chartCard}>
-        <Card.Content>
-          <View style={styles.chartHeader}>
-            <Title style={styles.cardTitle}>Productie Deze Week</Title>
-            <View style={styles.chartLegend}>
-              <Text style={styles.chartTotal}>
-                {calculateWeeklyTotal()}/{calculateWeeklyTarget()}
-              </Text>
-            </View>
-          </View>
-          {renderMiniChart()}
-          <Text style={styles.chartNote}>
-            * Groene balken = doel behaald, oranje = onder doel
-          </Text>
-        </Card.Content>
-      </Card>
-
-      {/* Combined Farm Overview */}
-      <Card style={styles.overviewCard}>
-        <Card.Content>
-          <Title style={styles.cardTitle}>
-            Totaal Overzicht (Alle Stallen)
-          </Title>
-          <View style={styles.overviewGrid}>
-            <View style={styles.overviewItem}>
-              <Text style={styles.overviewNumber}>
-                €{dashboardData.quickStats.weeklyRevenue}
-              </Text>
-              <Text style={styles.overviewLabel}>Week Omzet</Text>
-            </View>
-            <View style={styles.overviewItem}>
-              <Text style={styles.overviewNumber}>
-                €{dashboardData.quickStats.weeklyProfit}
-              </Text>
-              <Text style={styles.overviewLabel}>Week Winst</Text>
-            </View>
-            <View style={styles.overviewItem}>
-              <Text style={styles.overviewNumber}>
-                {dashboardData.quickStats.totalInventory}
-              </Text>
-              <Text style={styles.overviewLabel}>Eieren Voorraad</Text>
-            </View>
-            <View style={styles.overviewItem}>
-              <Text style={styles.overviewNumber}>
-                {dashboardData.quickStats.feedConversion}
-              </Text>
-              <Text style={styles.overviewLabel}>Voer Conversie</Text>
-            </View>
-          </View>
-        </Card.Content>
-      </Card>
-
-      {/* Alerts & Notifications */}
-      <Card style={styles.alertCard}>
-        <Card.Content>
-          <Title style={styles.cardTitle}>Meldingen & Waarschuwingen</Title>
-          {dashboardData.alerts.map((alert) => (
-            <TouchableOpacity
-              key={alert.id}
-              style={styles.alertItem}
-              onPress={() => handleAlertPress(alert)}
-            >
-              <View
-                style={[
-                  styles.alertIndicator,
-                  { backgroundColor: getAlertColor(alert.type) },
-                ]}
-              />
-              <Text style={styles.alertText}>{alert.message}</Text>
-              {alert.action && (
-                <MaterialCommunityIcons
-                  name="chevron-right"
-                  size={20}
-                  color="#666"
-                  style={{ marginLeft: 8 }}
-                />
-              )}
-            </TouchableOpacity>
-          ))}
-        </Card.Content>
-      </Card>
-
-      {/* Performance Indicators */}
-      <Card style={styles.performanceCard}>
-        <Card.Content>
-          <Title style={styles.cardTitle}>Prestatie Indicatoren</Title>
-          <View style={styles.performanceItem}>
-            <Text style={styles.performanceLabel}>Productie vs Norm</Text>
-            <View style={styles.performanceBar}>
-              <ProgressBar
-                progress={currentFarm.dailyStats.productionPercentage / 100}
-                color={getStatusColor(
-                  currentFarm.dailyStats.productionPercentage
-                )}
-                style={styles.progressBar}
-              />
-              <Text style={styles.performanceText}>
-                {currentFarm.dailyStats.productionPercentage}%
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.performanceItem}>
-            <Text style={styles.performanceLabel}>Voer Efficiëntie</Text>
-            <View style={styles.performanceBar}>
-              <ProgressBar
-                progress={0.85}
-                color="#4CAF50"
-                style={styles.progressBar}
-              />
-              <Text style={styles.performanceText}>Goed (2.1)</Text>
-            </View>
-          </View>
-
-          <View style={styles.performanceItem}>
-            <Text style={styles.performanceLabel}>Gezondheid Score</Text>
-            <View style={styles.performanceBar}>
-              <ProgressBar
-                progress={0.92}
-                color="#4CAF50"
-                style={styles.progressBar}
-              />
-              <Text style={styles.performanceText}>Uitstekend</Text>
-            </View>
-          </View>
-        </Card.Content>
-      </Card>
-
-      {/* Quick Links Card */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <Title style={styles.cardTitle}>Meer Opties</Title>
-          <Button
-            mode="outlined"
-            icon="account"
-            onPress={() => navigation.navigate("Profile")}
-            style={styles.linkButton}
-          >
-            Bekijk Profiel
-          </Button>
-          <Button
-            mode="outlined"
-            icon="cog"
-            onPress={() => navigation.navigate("Settings")}
-            style={styles.linkButton}
-          >
-            Instellingen Beheren
-          </Button>
-          <Button
-            mode="outlined"
-            icon="chart-box"
-            onPress={() => navigation.navigate("Reports")}
-            style={styles.linkButton}
-          >
-            Uitgebreide Rapporten
-          </Button>
-        </Card.Content>
-      </Card>
-    </ScrollView>
+      <ScrollView
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {renderStallSelector()}
+        {renderInventoryAlert()}
+        {renderCurrentStallInfo()}
+        {renderTodayStats()}
+        {renderWeeklyChart()}
+        {renderQuickActions()}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -553,224 +589,284 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
-    padding: 16,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "#f5f5f5",
   },
-  headerContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 20,
-  },
-  header: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#2E7D32",
-    marginBottom: 4,
-  },
-  date: {
+  loadingText: {
+    marginTop: 12,
     fontSize: 16,
     color: "#666",
   },
-  quickActionsCard: {
-    marginBottom: 16,
-    elevation: 2,
-  },
-  cardTitle: {
-    color: "#2E7D32",
-    marginBottom: 12,
-  },
-  quickActionsGrid: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    flexWrap: "wrap",
-  },
-  quickAction: {
-    alignItems: "center",
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: "#f8f8f8",
-    minWidth: 80,
-    margin: 4,
-  },
-  quickActionText: {
-    fontSize: 11,
-    color: "#333",
-    textAlign: "center",
-    marginTop: 4,
-  },
-  farmInfoCard: {
-    marginBottom: 16,
-    elevation: 2,
-  },
-  farmHeader: {
+  header: {
+    padding: 20,
+    backgroundColor: "#2E7D32",
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
   },
-  farmDetails: {
-    marginTop: 8,
+  headerLeft: {
+    flex: 1,
   },
-  farmDetailText: {
+  greeting: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#fff",
+  },
+  date: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.9)",
+    marginTop: 4,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  stallSelector: {
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+  },
+  stallSelectorContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  stallChip: {
+    marginRight: 8,
+  },
+  stallChipSelected: {
+    backgroundColor: "#2E7D32",
+  },
+  stallChipText: {
+    fontSize: 14,
+  },
+  card: {
+    margin: 16,
+    marginBottom: 8,
+    elevation: 2,
+    backgroundColor: "#fff",
+  },
+  warningCard: {
+    margin: 16,
+    backgroundColor: "#FFF3E0",
+    elevation: 2,
+  },
+  warningContent: {
+    alignItems: "center",
+    paddingVertical: 20,
+  },
+  warningTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#FF9800",
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  warningText: {
     fontSize: 14,
     color: "#666",
+    textAlign: "center",
+    marginBottom: 16,
+    paddingHorizontal: 20,
+  },
+  warningButton: {
+    marginTop: 8,
+  },
+  stallHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 16,
+  },
+  stallHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  stallInfo: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  stallName: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#2E7D32",
+  },
+  stallBreed: {
+    fontSize: 14,
+    color: "#666",
+    marginTop: 2,
+  },
+  inactiveChip: {
+    backgroundColor: "#FFE0B2",
+  },
+  capacitySection: {
+    backgroundColor: "#f8f9fa",
+    padding: 12,
+    borderRadius: 8,
+  },
+  capacityHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
+  },
+  capacityLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#666",
+  },
+  capacityValue: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#2E7D32",
   },
   progressBar: {
     height: 8,
     borderRadius: 4,
+    backgroundColor: "#e0e0e0",
+  },
+  capacityPercentage: {
+    fontSize: 12,
+    color: "#999",
+    marginTop: 4,
+    textAlign: "right",
+  },
+  noDataContainer: {
+    alignItems: "center",
+    paddingVertical: 30,
+  },
+  noDataText: {
+    fontSize: 14,
+    color: "#999",
+    marginTop: 12,
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  inputButton: {
+    marginTop: 8,
   },
   statsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    marginBottom: 16,
+    gap: 12,
   },
-  statCard: {
-    width: (width - 48) / 2,
-    marginBottom: 12,
-    elevation: 2,
+  statBox: {
+    alignItems: "center",
+    minWidth: "22%",
+    padding: 8,
   },
-  statNumber: {
+  statValue: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#2E7D32",
-    textAlign: "center",
-    marginBottom: 4,
+    marginTop: 8,
+    color: "#333",
   },
   statLabel: {
-    textAlign: "center",
-    color: "#666",
     fontSize: 12,
-  },
-  chartCard: {
-    marginBottom: 16,
-    elevation: 2,
-  },
-  chartHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  chartLegend: {
-    alignItems: "center",
-  },
-  chartTotal: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#2E7D32",
+    color: "#666",
+    marginTop: 4,
+    textAlign: "center",
   },
   chartContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "flex-end",
-    height: 120,
-    marginBottom: 12,
+    height: 140,
+    marginTop: 16,
+    paddingHorizontal: 4,
   },
   barContainer: {
     alignItems: "center",
     flex: 1,
+    marginHorizontal: 2,
   },
   bar: {
-    width: 20,
-    backgroundColor: "#2E7D32",
-    borderRadius: 2,
-    marginBottom: 8,
-    minHeight: 4,
+    width: "100%",
+    maxWidth: 40,
+    backgroundColor: "#4CAF50",
+    borderRadius: 4,
+    justifyContent: "flex-end",
+    alignItems: "center",
+    paddingBottom: 4,
   },
-  barLabel: {
+  barValueInside: {
     fontSize: 10,
-    color: "#666",
-    marginBottom: 2,
+    color: "#fff",
+    fontWeight: "bold",
   },
-  barValue: {
+  barValueOutside: {
     fontSize: 10,
     color: "#333",
     fontWeight: "bold",
+    marginBottom: 2,
   },
-  chartNote: {
+  barLabel: {
+    fontSize: 11,
+    color: "#666",
+    marginTop: 6,
+    fontWeight: "500",
+  },
+  barLabelToday: {
+    color: "#2E7D32",
+    fontWeight: "bold",
+  },
+  barDate: {
+    fontSize: 9,
+    color: "#999",
+    marginTop: 2,
+  },
+  divider: {
+    marginVertical: 16,
+  },
+  weekStatsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+  },
+  weekStatItem: {
+    alignItems: "center",
+  },
+  weekStatLabel: {
     fontSize: 12,
     color: "#666",
-    fontStyle: "italic",
-    textAlign: "center",
+    marginBottom: 4,
   },
-  overviewCard: {
-    marginBottom: 16,
-    elevation: 2,
-  },
-  overviewGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-  },
-  overviewItem: {
-    alignItems: "center",
-    width: (width - 80) / 2,
-    marginBottom: 12,
-  },
-  overviewNumber: {
+  weekStatValue: {
     fontSize: 18,
     fontWeight: "bold",
     color: "#2E7D32",
   },
-  overviewLabel: {
-    fontSize: 12,
-    color: "#666",
-  },
   alertCard: {
-    marginBottom: 16,
-    elevation: 2,
+    margin: 16,
+    marginBottom: 8,
+    elevation: 4,
   },
-  alertItem: {
+  alertContent: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
-    paddingVertical: 4,
-  },
-  alertIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 12,
   },
   alertText: {
-    fontSize: 14,
-    color: "#333",
+    marginLeft: 12,
     flex: 1,
   },
-  performanceCard: {
-    marginBottom: 16,
-    elevation: 2,
-  },
-  performanceItem: {
-    marginBottom: 16,
-  },
-  performanceLabel: {
-    fontSize: 14,
+  alertTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
     color: "#333",
-    marginBottom: 8,
+    marginBottom: 4,
   },
-  performanceBar: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  performanceText: {
-    fontSize: 12,
+  alertDescription: {
+    fontSize: 14,
     color: "#666",
-    marginLeft: 12,
-    minWidth: 60,
   },
-  card: {
-    marginBottom: 16,
-    elevation: 2,
+  actionsGrid: {
+    gap: 12,
   },
-  linkButton: {
-    marginBottom: 8,
+  actionButton: {
+    paddingVertical: 4,
   },
 });

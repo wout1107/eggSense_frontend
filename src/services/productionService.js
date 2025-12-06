@@ -6,7 +6,6 @@ const productionService = {
     return response.data;
   },
 
-  // Alias for createDailyProduction used in DailyInputScreen
   createDailyProduction: async (productionData) => {
     const response = await api.post("/daily-productions", productionData);
     return response.data;
@@ -29,12 +28,19 @@ const productionService = {
     return response.data;
   },
 
-  // Alias for getDailyProduction used in DashboardScreen
   getDailyProduction: async (date, stallId) => {
-    const response = await api.get("/daily-productions/by-date", {
-      params: { date, stallId },
-    });
-    return response.data;
+    try {
+      const response = await api.get("/daily-productions/by-date", {
+        params: { date, stallId },
+      });
+      return response.data;
+    } catch (error) {
+      // If 404, return null (no production for that date)
+      if (error.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   },
 
   getDifference: async (id) => {

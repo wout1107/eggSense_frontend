@@ -6,6 +6,7 @@ import {
   ScrollView,
   Alert,
   Switch,
+  ActivityIndicator,
 } from "react-native";
 import {
   Card,
@@ -14,121 +15,82 @@ import {
   Button,
   List,
   Divider,
-  RadioButton,
   IconButton,
   Chip,
   Portal,
   Dialog,
   SegmentedButtons,
 } from "react-native-paper";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import stallService from "../services/stallService";
+import authService from "../services/authService";
 
-export default function SettingsScreen({ navigation, route }) {
-  const [selectedCategory, setSelectedCategory] = useState("farm");
+export default function SettingsScreen({ navigation }) {
+  const [selectedCategory, setSelectedCategory] = useState("stalls");
+  const [loading, setLoading] = useState(true);
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
   const [editStallDialogVisible, setEditStallDialogVisible] = useState(false);
   const [selectedStall, setSelectedStall] = useState(null);
+  const [stallToDelete, setStallToDelete] = useState(null);
+  const [user, setUser] = useState(null);
 
-  const [farmSettings, setFarmSettings] = useState({
-    farmName: "Boerderij de Gouden Kip",
-    ownerName: "Jan Jansen",
-    address: "Hoofdstraat 123, 1234 AB Dorp",
-    kvkNumber: "12345678",
-    btwNumber: "NL123456789B01",
-  });
-
-  const [stalls, setStalls] = useState([
-    {
-      id: "1",
-      name: "Stal 1 - Bruine Hennen",
-      totalChickens: 280,
-      breed: "Bruine Leghennen",
-      age: 28,
-      setupDate: "2023-06-15",
-      active: true,
-    },
-    {
-      id: "2",
-      name: "Stal 2 - Witte Hennen",
-      totalChickens: 320,
-      breed: "Witte Leghennen",
-      age: 34,
-      setupDate: "2023-05-01",
-      active: true,
-    },
-  ]);
+  const [stalls, setStalls] = useState([]);
 
   const [editedStall, setEditedStall] = useState({
     name: "",
-    totalChickens: "",
     breed: "",
-    setupDate: "",
+    capacity: "",
+    initialChickenCount: "",
+    notes: "",
+    active: true,
   });
 
-  const [priceSettings, setPriceSettings] = useState({
-    smallEgg: "0.20",
-    mediumEgg: "0.25",
-    largeEgg: "0.30",
-    feedPerKg: "0.45",
-    currency: "EUR",
-    taxRate: "9",
-  });
+  useEffect(() => {
+    loadData();
+  }, []);
 
-  const [notificationSettings, setNotificationSettings] = useState({
-    enabled: true,
-    dailyReminder: true,
-    reminderTime: "09:00",
-    lowStock: true,
-    lowStockThreshold: "200",
-    highMortality: true,
-    mortalityThreshold: "2",
-    performance: true,
-    orderReminders: true,
-    feedDelivery: true,
-  });
-
-  const [appSettings, setAppSettings] = useState({
-    theme: "light",
-    language: "nl",
-    dateFormat: "dd-mm-yyyy",
-    autoBackup: true,
-    backupFrequency: "daily",
-    showTutorials: true,
-  });
-
-  const currencies = [
-    { label: "Euro (€)", value: "EUR" },
-    { label: "Dollar ($)", value: "USD" },
-    { label: "Pond (£)", value: "GBP" },
-  ];
-
-  const languages = [
-    { label: "Nederlands", value: "nl" },
-    { label: "English", value: "en" },
-    { label: "Deutsch", value: "de" },
-    { label: "Français", value: "fr" },
-  ];
-
-  const dateFormats = [
-    { label: "DD-MM-YYYY", value: "dd-mm-yyyy" },
-    { label: "MM-DD-YYYY", value: "mm-dd-yyyy" },
-    { label: "YYYY-MM-DD", value: "yyyy-mm-dd" },
-  ];
-
-  const saveFarmSettings = () => {
-    if (!farmSettings.farmName || !farmSettings.ownerName) {
-      Alert.alert("Fout", "Vul alle verplichte velden in");
-      return;
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      await loadStalls();
+      await loadUserData();
+    } catch (error) {
+      console.error("Error loading settings data:", error);
+      Alert.alert("Fout", "Kon instellingen niet laden");
+    } finally {
+      setLoading(false);
     }
-    Alert.alert("Succes", "Bedrijfsgegevens opgeslagen");
+  };
+
+  const loadUserData = async () => {
+    try {
+      const userStr = await AsyncStorage.getItem("user");
+      if (userStr) {
+        setUser(JSON.parse(userStr));
+      }
+    } catch (error) {
+      console.error("Error loading user data:", error);
+    }
+  };
+
+  const loadStalls = async () => {
+    try {
+      const data = await stallService.listStalls();
+      setStalls(data);
+    } catch (error) {
+      console.error("Error loading stalls:", error);
+      Alert.alert("Fout", "Kon stallen niet laden");
+    }
   };
 
   const addNewStall = () => {
     setEditedStall({
       name: "",
-      totalChickens: "",
-      breed: "brown",
-      setupDate: new Date().toISOString().split("T")[0],
+      breed: "",
+      capacity: "",
+      initialChickenCount: "",
+      notes: "",
+      active: true,
     });
     setSelectedStall(null);
     setEditStallDialogVisible(true);
@@ -137,427 +99,240 @@ export default function SettingsScreen({ navigation, route }) {
   const editStall = (stall) => {
     setEditedStall({
       name: stall.name,
-      totalChickens: stall.totalChickens.toString(),
-      breed: stall.breed,
-      setupDate: stall.setupDate,
+      breed: stall.breed || "",
+      capacity: stall.capacity.toString(),
+      initialChickenCount:
+        stall.currentChickenCount?.toString() || stall.capacity.toString(),
+      notes: stall.notes || "",
+      active: stall.active,
     });
     setSelectedStall(stall);
     setEditStallDialogVisible(true);
   };
 
-  useEffect(() => {
-    loadStalls();
-  }, []);
-
-  const loadStalls = async () => {
-    try {
-      const data = await stallService.listStalls();
-      setStalls(data);
-    } catch (error) {
-      console.error("Error loading stalls:", error);
-    }
-  };
-
   const saveStall = async () => {
+    if (!editedStall.name.trim()) {
+      Alert.alert("Fout", "Vul een stal naam in");
+      return;
+    }
+
+    if (!editedStall.capacity || parseInt(editedStall.capacity) <= 0) {
+      Alert.alert("Fout", "Vul een geldige capaciteit in");
+      return;
+    }
+
     try {
+      const stallData = {
+        name: editedStall.name,
+        breed: editedStall.breed || null,
+        capacity: parseInt(editedStall.capacity),
+        notes: editedStall.notes,
+        active: editedStall.active,
+      };
+
       if (selectedStall) {
-        // Update existing
-        const updated = await stallService.updateStall(
-          selectedStall.id,
-          editedStall
-        );
-        setStalls(stalls.map((s) => (s.id === selectedStall.id ? updated : s)));
+        // Editing existing stall - don't send initialChickenCount
+        await stallService.updateStall(selectedStall.id, stallData);
+        Alert.alert("Succes", "Stal succesvol bijgewerkt");
       } else {
-        // Create new
-        const created = await stallService.createStall(editedStall);
-        setStalls([...stalls, created]);
+        // Creating new stall - include initialChickenCount
+        stallData.initialChickenCount = parseInt(
+          editedStall.initialChickenCount || editedStall.capacity
+        );
+        await stallService.createStall(stallData);
+        Alert.alert("Succes", "Stal succesvol aangemaakt");
       }
+
       setEditStallDialogVisible(false);
+      await loadStalls();
     } catch (error) {
+      console.error("Error saving stall:", error);
       Alert.alert("Fout", "Kon stal niet opslaan");
     }
   };
 
-  const deleteStall = async (stall) => {
+  const confirmDeleteStall = (stall) => {
+    setStallToDelete(stall);
+    setDeleteDialogVisible(true);
+  };
+
+  const deleteStall = async () => {
+    if (!stallToDelete) return;
+
     try {
-      await stallService.deleteStall(stall.id);
-      setStalls(stalls.filter((s) => s.id !== stall.id));
+      await stallService.deleteStall(stallToDelete.id);
       setDeleteDialogVisible(false);
+      setStallToDelete(null);
+      await loadStalls();
+      Alert.alert("Succes", "Stal succesvol verwijderd");
     } catch (error) {
+      console.error("Error deleting stall:", error);
       Alert.alert("Fout", "Kon stal niet verwijderen");
     }
   };
 
-  const toggleStallActive = (stallId) => {
-    setStalls(
-      stalls.map((s) => (s.id === stallId ? { ...s, active: !s.active } : s))
-    );
+  const toggleStallActive = async (stall) => {
+    try {
+      await stallService.updateStall(stall.id, {
+        ...stall,
+        active: !stall.active,
+      });
+      await loadStalls();
+    } catch (error) {
+      console.error("Error toggling stall status:", error);
+      Alert.alert("Fout", "Kon stal status niet wijzigen");
+    }
   };
 
-  const savePriceSettings = () => {
-    Alert.alert("Succes", "Prijsinstellingen opgeslagen");
-  };
-
-  const exportData = () => {
-    Alert.alert("Data Exporteren", "Kies een export formaat", [
-      { text: "Annuleren", style: "cancel" },
-      {
-        text: "Excel (CSV)",
-        onPress: () =>
-          Alert.alert(
-            "Succes",
-            "Data geëxporteerd naar Downloads/eggSense_export.csv"
-          ),
-      },
-      {
-        text: "JSON Backup",
-        onPress: () =>
-          Alert.alert(
-            "Succes",
-            "Backup gemaakt: Downloads/eggSense_backup.json"
-          ),
-      },
-    ]);
-  };
-
-  const importData = () => {
-    Alert.alert(
-      "Data Importeren",
-      "Let op: Dit overschrijft huidige data. Zorg dat u eerst een backup maakt.",
-      [
-        { text: "Annuleren", style: "cancel" },
-        {
-          text: "Bestand Kiezen",
-          onPress: () => Alert.alert("Info", "Bestandskiezer wordt geopend..."),
-        },
-      ]
-    );
-  };
-
-  const resetApp = () => {
-    setDeleteDialogVisible(true);
-  };
-
-  const confirmReset = () => {
-    setDeleteDialogVisible(false);
-    Alert.alert(
-      "App Gereset",
-      "Alle data is gewist en instellingen zijn hersteld"
-    );
-  };
-
-  const handleLogout = () => {
-    Alert.alert("Uitloggen", "Weet u zeker dat u wilt uitloggen?", [
+  const handleLogout = async () => {
+    Alert.alert("Uitloggen", "Weet je zeker dat je wilt uitloggen?", [
       { text: "Annuleren", style: "cancel" },
       {
         text: "Uitloggen",
         style: "destructive",
-        onPress: () => {
-          Alert.alert("Uitgelogd", "Tot ziens!");
+        onPress: async () => {
+          try {
+            await authService.logout();
+            await AsyncStorage.removeItem("token");
+            await AsyncStorage.removeItem("user");
+            navigation.reset({
+              index: 0,
+              routes: [{ name: "Welcome" }],
+            });
+          } catch (error) {
+            console.error("Error logging out:", error);
+            Alert.alert("Fout", "Kon niet uitloggen");
+          }
         },
       },
     ]);
   };
 
-  const getCurrencySymbol = (currency) => {
-    switch (currency) {
-      case "EUR":
-        return "€";
-      case "USD":
-        return "$";
-      case "GBP":
-        return "£";
-      default:
-        return "€";
-    }
-  };
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2E7D32" />
+        <Text style={styles.loadingText}>Laden...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.content}>
-        <Text style={styles.header}>Instellingen</Text>
+      <View style={styles.header}>
+        <IconButton
+          icon="arrow-left"
+          size={24}
+          onPress={() => navigation.goBack()}
+          iconColor="#2E7D32"
+        />
+        <Text style={styles.headerTitle}>Instellingen</Text>
+        <View style={{ width: 40 }} />
+      </View>
 
+      <ScrollView style={styles.content}>
         {/* Category Selector */}
         <SegmentedButtons
           value={selectedCategory}
           onValueChange={setSelectedCategory}
           buttons={[
-            { value: "farm", label: "Bedrijf", icon: "barn" },
-            { value: "prices", label: "Prijzen", icon: "currency-eur" },
+            { value: "stalls", label: "Stallen", icon: "barn" },
             { value: "app", label: "App", icon: "cog" },
+            { value: "account", label: "Account", icon: "account" },
           ]}
           style={styles.categorySelector}
         />
 
-        {/* Farm Settings */}
-        {selectedCategory === "farm" && (
-          <>
-            <Card style={styles.card}>
-              <Card.Content>
-                <View style={styles.cardHeader}>
-                  <Title style={styles.cardTitle}>Bedrijfsgegevens</Title>
-                  <IconButton
-                    icon="information"
-                    size={20}
-                    iconColor="#2E7D32"
-                    onPress={() =>
-                      Alert.alert(
-                        "Info",
-                        "Deze gegevens worden gebruikt op facturen en documenten"
-                      )
-                    }
-                  />
-                </View>
-
-                <TextInput
-                  label="Bedrijfsnaam *"
-                  value={farmSettings.farmName}
-                  onChangeText={(text) =>
-                    setFarmSettings({ ...farmSettings, farmName: text })
-                  }
-                  style={styles.input}
-                  left={<TextInput.Icon icon="domain" />}
-                />
-
-                <TextInput
-                  label="Eigenaar *"
-                  value={farmSettings.ownerName}
-                  onChangeText={(text) =>
-                    setFarmSettings({ ...farmSettings, ownerName: text })
-                  }
-                  style={styles.input}
-                  left={<TextInput.Icon icon="account" />}
-                />
-
-                <TextInput
-                  label="Adres"
-                  value={farmSettings.address}
-                  onChangeText={(text) =>
-                    setFarmSettings({ ...farmSettings, address: text })
-                  }
-                  multiline
-                  numberOfLines={2}
-                  style={styles.input}
-                  left={<TextInput.Icon icon="map-marker" />}
-                />
-
-                <TextInput
-                  label="KVK Nummer"
-                  value={farmSettings.kvkNumber}
-                  onChangeText={(text) =>
-                    setFarmSettings({ ...farmSettings, kvkNumber: text })
-                  }
-                  keyboardType="numeric"
-                  style={styles.input}
-                  left={<TextInput.Icon icon="file-document" />}
-                />
-
-                <TextInput
-                  label="BTW Nummer"
-                  value={farmSettings.btwNumber}
-                  onChangeText={(text) =>
-                    setFarmSettings({ ...farmSettings, btwNumber: text })
-                  }
-                  style={styles.input}
-                  left={<TextInput.Icon icon="receipt" />}
-                />
-
+        {/* Stalls Management */}
+        {selectedCategory === "stalls" && (
+          <Card style={styles.card}>
+            <Card.Content>
+              <View style={styles.cardHeader}>
+                <Title style={styles.cardTitle}>
+                  Stallen ({stalls.length})
+                </Title>
                 <Button
-                  mode="contained"
-                  onPress={saveFarmSettings}
-                  style={styles.saveButton}
-                  buttonColor="#2E7D32"
-                  icon="content-save"
+                  mode="outlined"
+                  onPress={addNewStall}
+                  compact
+                  icon="plus"
                 >
-                  Gegevens Opslaan
+                  Toevoegen
                 </Button>
-              </Card.Content>
-            </Card>
+              </View>
 
-            {/* Stallen Management */}
-            <Card style={styles.card}>
-              <Card.Content>
-                <View style={styles.cardHeader}>
-                  <Title style={styles.cardTitle}>
-                    Stallen ({stalls.length})
-                  </Title>
-                  <Button
-                    mode="outlined"
-                    onPress={addNewStall}
-                    compact
-                    icon="plus"
-                  >
-                    Toevoegen
-                  </Button>
+              {stalls.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyText}>Geen stallen gevonden</Text>
+                  <Text style={styles.emptySubtext}>
+                    Voeg een stal toe om te beginnen
+                  </Text>
                 </View>
-
-                {stalls.map((stall) => (
-                  <View key={stall.id} style={styles.stallItem}>
-                    <View style={styles.stallHeader}>
-                      <View style={styles.stallInfo}>
-                        <Text style={styles.stallName}>{stall.name}</Text>
-                        <Text style={styles.stallDetails}>
-                          {stall.totalChickens} kippen • {stall.age} weken oud
-                        </Text>
-                        <Text style={styles.stallBreed}>{stall.breed}</Text>
+              ) : (
+                <>
+                  {stalls.map((stall) => (
+                    <View key={stall.id} style={styles.stallItem}>
+                      <View style={styles.stallHeader}>
+                        <View style={styles.stallInfo}>
+                          <Text style={styles.stallName}>{stall.name}</Text>
+                          <Text style={styles.stallDetails}>
+                            Capaciteit: {stall.capacity} kippen
+                          </Text>
+                          {stall.notes && (
+                            <Text style={styles.stallNotes}>{stall.notes}</Text>
+                          )}
+                        </View>
+                        <View style={styles.stallActions}>
+                          <Text style={styles.stallStatusLabel}>
+                            {stall.active ? "Actief" : "Inactief"}
+                          </Text>
+                          <Switch
+                            value={stall.active}
+                            onValueChange={() => toggleStallActive(stall)}
+                            thumbColor={stall.active ? "#2E7D32" : "#f4f3f4"}
+                          />
+                        </View>
                       </View>
-                      <View style={styles.stallActions}>
-                        <Switch
-                          value={stall.active}
-                          onValueChange={() => toggleStallActive(stall.id)}
-                          thumbColor={stall.active ? "#2E7D32" : "#f4f3f4"}
-                        />
+
+                      <View style={styles.stallButtons}>
+                        <Button
+                          mode="outlined"
+                          onPress={() => editStall(stall)}
+                          compact
+                          icon="pencil"
+                          style={styles.stallButton}
+                        >
+                          Bewerken
+                        </Button>
+                        <Button
+                          mode="outlined"
+                          onPress={() => confirmDeleteStall(stall)}
+                          compact
+                          icon="delete"
+                          textColor="#F44336"
+                          style={styles.stallButton}
+                        >
+                          Verwijderen
+                        </Button>
                       </View>
+
+                      {!stall.active && (
+                        <Chip
+                          mode="flat"
+                          style={styles.inactiveChip}
+                          textStyle={{ fontSize: 11 }}
+                        >
+                          Inactief
+                        </Chip>
+                      )}
+
+                      <Divider style={styles.stallDivider} />
                     </View>
-
-                    <View style={styles.stallButtons}>
-                      <Button
-                        mode="outlined"
-                        onPress={() => editStall(stall)}
-                        compact
-                        icon="pencil"
-                        style={styles.stallButton}
-                      >
-                        Bewerken
-                      </Button>
-                      <Button
-                        mode="outlined"
-                        onPress={() => deleteStall(stall)}
-                        compact
-                        icon="delete"
-                        textColor="#F44336"
-                        style={styles.stallButton}
-                      >
-                        Verwijderen
-                      </Button>
-                    </View>
-
-                    {!stall.active && (
-                      <Chip
-                        mode="flat"
-                        style={styles.inactiveChip}
-                        textStyle={{ fontSize: 11 }}
-                      >
-                        Inactief
-                      </Chip>
-                    )}
-
-                    <Divider style={styles.stallDivider} />
-                  </View>
-                ))}
-              </Card.Content>
-            </Card>
-          </>
-        )}
-
-        {/* Price Settings */}
-        {selectedCategory === "prices" && (
-          <>
-            <Card style={styles.card}>
-              <Card.Content>
-                <Title style={styles.cardTitle}>Eieren Prijzen</Title>
-
-                <TextInput
-                  label={`Klein Ei (S) - ${getCurrencySymbol(
-                    priceSettings.currency
-                  )}`}
-                  value={priceSettings.smallEgg}
-                  onChangeText={(text) =>
-                    setPriceSettings({ ...priceSettings, smallEgg: text })
-                  }
-                  keyboardType="decimal-pad"
-                  style={styles.input}
-                  left={<TextInput.Icon icon="egg" />}
-                />
-
-                <TextInput
-                  label={`Medium Ei (M) - ${getCurrencySymbol(
-                    priceSettings.currency
-                  )}`}
-                  value={priceSettings.mediumEgg}
-                  onChangeText={(text) =>
-                    setPriceSettings({ ...priceSettings, mediumEgg: text })
-                  }
-                  keyboardType="decimal-pad"
-                  style={styles.input}
-                  left={<TextInput.Icon icon="egg" />}
-                />
-
-                <TextInput
-                  label={`Groot Ei (L) - ${getCurrencySymbol(
-                    priceSettings.currency
-                  )}`}
-                  value={priceSettings.largeEgg}
-                  onChangeText={(text) =>
-                    setPriceSettings({ ...priceSettings, largeEgg: text })
-                  }
-                  keyboardType="decimal-pad"
-                  style={styles.input}
-                  left={<TextInput.Icon icon="egg" />}
-                />
-
-                <Divider style={styles.divider} />
-
-                <TextInput
-                  label={`Voerprijs per kg - ${getCurrencySymbol(
-                    priceSettings.currency
-                  )}`}
-                  value={priceSettings.feedPerKg}
-                  onChangeText={(text) =>
-                    setPriceSettings({ ...priceSettings, feedPerKg: text })
-                  }
-                  keyboardType="decimal-pad"
-                  style={styles.input}
-                  left={<TextInput.Icon icon="food-apple" />}
-                />
-
-                <Button
-                  mode="contained"
-                  onPress={savePriceSettings}
-                  style={styles.saveButton}
-                  buttonColor="#2E7D32"
-                  icon="content-save"
-                >
-                  Prijzen Opslaan
-                </Button>
-              </Card.Content>
-            </Card>
-
-            <Card style={styles.card}>
-              <Card.Content>
-                <Title style={styles.cardTitle}>Valuta & BTW</Title>
-
-                <Text style={styles.sectionLabel}>Valuta:</Text>
-                <RadioButton.Group
-                  onValueChange={(value) =>
-                    setPriceSettings({ ...priceSettings, currency: value })
-                  }
-                  value={priceSettings.currency}
-                >
-                  {currencies.map((curr) => (
-                    <RadioButton.Item
-                      key={curr.value}
-                      label={curr.label}
-                      value={curr.value}
-                    />
                   ))}
-                </RadioButton.Group>
-
-                <Divider style={styles.divider} />
-
-                <TextInput
-                  label="BTW Tarief (%)"
-                  value={priceSettings.taxRate}
-                  onChangeText={(text) =>
-                    setPriceSettings({ ...priceSettings, taxRate: text })
-                  }
-                  keyboardType="numeric"
-                  style={styles.input}
-                  left={<TextInput.Icon icon="percent" />}
-                />
-              </Card.Content>
-            </Card>
-          </>
+                </>
+              )}
+            </Card.Content>
+          </Card>
         )}
 
         {/* App Settings */}
@@ -565,442 +340,116 @@ export default function SettingsScreen({ navigation, route }) {
           <>
             <Card style={styles.card}>
               <Card.Content>
-                <Title style={styles.cardTitle}>Weergave</Title>
-
-                <Text style={styles.sectionLabel}>Thema:</Text>
-                <RadioButton.Group
-                  onValueChange={(value) =>
-                    setAppSettings({ ...appSettings, theme: value })
-                  }
-                  value={appSettings.theme}
-                >
-                  <RadioButton.Item label="☀️ Licht" value="light" />
-                  <RadioButton.Item label="🌙 Donker" value="dark" />
-                  <RadioButton.Item label="📱 Systeem" value="system" />
-                </RadioButton.Group>
-
-                <Divider style={styles.divider} />
-
-                <Text style={styles.sectionLabel}>Taal:</Text>
-                <RadioButton.Group
-                  onValueChange={(value) =>
-                    setAppSettings({ ...appSettings, language: value })
-                  }
-                  value={appSettings.language}
-                >
-                  {languages.map((lang) => (
-                    <RadioButton.Item
-                      key={lang.value}
-                      label={lang.label}
-                      value={lang.value}
-                    />
-                  ))}
-                </RadioButton.Group>
-
-                <Divider style={styles.divider} />
-
-                <Text style={styles.sectionLabel}>Datumnotatie:</Text>
-                <RadioButton.Group
-                  onValueChange={(value) =>
-                    setAppSettings({ ...appSettings, dateFormat: value })
-                  }
-                  value={appSettings.dateFormat}
-                >
-                  {dateFormats.map((format) => (
-                    <RadioButton.Item
-                      key={format.value}
-                      label={format.label}
-                      value={format.value}
-                    />
-                  ))}
-                </RadioButton.Group>
-              </Card.Content>
-            </Card>
-
-            {/* Notifications Settings - Optional */}
-            <Card style={styles.card}>
-              <Card.Content>
-                <View style={styles.cardHeader}>
-                  <Title style={styles.cardTitle}>Notificaties</Title>
-                  <Switch
-                    value={notificationSettings.enabled}
-                    onValueChange={(value) =>
-                      setNotificationSettings({
-                        ...notificationSettings,
-                        enabled: value,
-                      })
-                    }
-                    thumbColor={
-                      notificationSettings.enabled ? "#2E7D32" : "#f4f3f4"
-                    }
-                  />
-                </View>
-
-                {notificationSettings.enabled && (
-                  <>
-                    <List.Item
-                      title="Dagelijkse Herinnering"
-                      description="Herinner me om dagelijkse data in te voeren"
-                      left={(props) => <List.Icon {...props} icon="alarm" />}
-                      right={() => (
-                        <Switch
-                          value={notificationSettings.dailyReminder}
-                          onValueChange={(value) =>
-                            setNotificationSettings({
-                              ...notificationSettings,
-                              dailyReminder: value,
-                            })
-                          }
-                        />
-                      )}
-                    />
-
-                    {notificationSettings.dailyReminder && (
-                      <TextInput
-                        label="Herinneringstijd"
-                        value={notificationSettings.reminderTime}
-                        onChangeText={(text) =>
-                          setNotificationSettings({
-                            ...notificationSettings,
-                            reminderTime: text,
-                          })
-                        }
-                        style={styles.input}
-                        left={<TextInput.Icon icon="clock-outline" />}
-                        placeholder="09:00"
-                      />
-                    )}
-
-                    <Divider />
-
-                    <List.Item
-                      title="Lage Voorraad"
-                      description="Waarschuwing bij lage voer/eieren voorraad"
-                      left={(props) => (
-                        <List.Icon {...props} icon="package-variant" />
-                      )}
-                      right={() => (
-                        <Switch
-                          value={notificationSettings.lowStock}
-                          onValueChange={(value) =>
-                            setNotificationSettings({
-                              ...notificationSettings,
-                              lowStock: value,
-                            })
-                          }
-                        />
-                      )}
-                    />
-
-                    {notificationSettings.lowStock && (
-                      <TextInput
-                        label="Drempelwaarde (kg)"
-                        value={notificationSettings.lowStockThreshold}
-                        onChangeText={(text) =>
-                          setNotificationSettings({
-                            ...notificationSettings,
-                            lowStockThreshold: text,
-                          })
-                        }
-                        keyboardType="numeric"
-                        style={styles.input}
-                        left={<TextInput.Icon icon="gauge" />}
-                      />
-                    )}
-
-                    <Divider />
-
-                    <List.Item
-                      title="Hoge Uitval"
-                      description="Waarschuwing bij ongewoon hoge uitval"
-                      left={(props) => (
-                        <List.Icon {...props} icon="alert-circle" />
-                      )}
-                      right={() => (
-                        <Switch
-                          value={notificationSettings.highMortality}
-                          onValueChange={(value) =>
-                            setNotificationSettings({
-                              ...notificationSettings,
-                              highMortality: value,
-                            })
-                          }
-                        />
-                      )}
-                    />
-
-                    {notificationSettings.highMortality && (
-                      <TextInput
-                        label="Drempel (%)"
-                        value={notificationSettings.mortalityThreshold}
-                        onChangeText={(text) =>
-                          setNotificationSettings({
-                            ...notificationSettings,
-                            mortalityThreshold: text,
-                          })
-                        }
-                        keyboardType="numeric"
-                        style={styles.input}
-                        left={<TextInput.Icon icon="percent" />}
-                      />
-                    )}
-
-                    <Divider />
-
-                    <List.Item
-                      title="Prestatie Waarschuwingen"
-                      description="Melding bij ondermaatse prestaties"
-                      left={(props) => (
-                        <List.Icon {...props} icon="chart-line" />
-                      )}
-                      right={() => (
-                        <Switch
-                          value={notificationSettings.performance}
-                          onValueChange={(value) =>
-                            setNotificationSettings({
-                              ...notificationSettings,
-                              performance: value,
-                            })
-                          }
-                        />
-                      )}
-                    />
-
-                    <Divider />
-
-                    <List.Item
-                      title="Bestelling Herinneringen"
-                      description="Herinnering voor openstaande orders"
-                      left={(props) => <List.Icon {...props} icon="cart" />}
-                      right={() => (
-                        <Switch
-                          value={notificationSettings.orderReminders}
-                          onValueChange={(value) =>
-                            setNotificationSettings({
-                              ...notificationSettings,
-                              orderReminders: value,
-                            })
-                          }
-                        />
-                      )}
-                    />
-
-                    <Divider />
-
-                    <List.Item
-                      title="Voer Leveringen"
-                      description="Melding bij verwachte voerlevering"
-                      left={(props) => (
-                        <List.Icon {...props} icon="truck-delivery" />
-                      )}
-                      right={() => (
-                        <Switch
-                          value={notificationSettings.feedDelivery}
-                          onValueChange={(value) =>
-                            setNotificationSettings({
-                              ...notificationSettings,
-                              feedDelivery: value,
-                            })
-                          }
-                        />
-                      )}
-                    />
-                  </>
-                )}
-              </Card.Content>
-            </Card>
-
-            {/* Backup Settings */}
-            <Card style={styles.card}>
-              <Card.Content>
-                <Title style={styles.cardTitle}>Backup & Data</Title>
-
+                <Title style={styles.cardTitle}>App Informatie</Title>
                 <List.Item
-                  title="Automatische Backup"
-                  description="Maak automatisch dagelijkse backups"
-                  left={(props) => (
-                    <List.Icon {...props} icon="backup-restore" />
-                  )}
-                  right={() => (
-                    <Switch
-                      value={appSettings.autoBackup}
-                      onValueChange={(value) =>
-                        setAppSettings({ ...appSettings, autoBackup: value })
-                      }
-                    />
-                  )}
+                  title="Versie"
+                  description="1.0.0"
+                  left={(props) => <List.Icon {...props} icon="information" />}
                 />
-
-                {appSettings.autoBackup && (
-                  <>
-                    <Divider />
-                    <Text style={styles.sectionLabel}>Backup Frequentie:</Text>
-                    <RadioButton.Group
-                      onValueChange={(value) =>
-                        setAppSettings({
-                          ...appSettings,
-                          backupFrequency: value,
-                        })
-                      }
-                      value={appSettings.backupFrequency}
-                    >
-                      <RadioButton.Item label="Dagelijks" value="daily" />
-                      <RadioButton.Item label="Wekelijks" value="weekly" />
-                      <RadioButton.Item label="Maandelijks" value="monthly" />
-                    </RadioButton.Group>
-                  </>
-                )}
-
-                <Divider style={styles.divider} />
-
-                <Button
-                  mode="outlined"
-                  onPress={exportData}
-                  style={styles.dataButton}
-                  icon="export"
-                >
-                  Data Exporteren
-                </Button>
-
-                <Button
-                  mode="outlined"
-                  onPress={importData}
-                  style={styles.dataButton}
-                  icon="import"
-                >
-                  Data Importeren
-                </Button>
-              </Card.Content>
-            </Card>
-
-            {/* Tutorials */}
-            <Card style={styles.card}>
-              <Card.Content>
-                <Title style={styles.cardTitle}>Hulp & Tutorials</Title>
-
-                <List.Item
-                  title="Tutorials Tonen"
-                  description="Laat tutorials zien bij eerste gebruik"
-                  left={(props) => <List.Icon {...props} icon="school" />}
-                  right={() => (
-                    <Switch
-                      value={appSettings.showTutorials}
-                      onValueChange={(value) =>
-                        setAppSettings({ ...appSettings, showTutorials: value })
-                      }
-                    />
-                  )}
-                />
-
                 <Divider />
-
-                <Button
-                  mode="outlined"
-                  onPress={() =>
-                    Alert.alert("Help", "Help documentatie wordt geopend...")
-                  }
-                  style={styles.dataButton}
-                  icon="help-circle"
-                >
-                  Hulp Documentatie
-                </Button>
-
-                <Button
-                  mode="outlined"
+                <List.Item
+                  title="Ontwikkelaar"
+                  description="EggSense Solutions"
+                  left={(props) => <List.Icon {...props} icon="code-tags" />}
+                />
+                <Divider />
+                <List.Item
+                  title="Support"
+                  description="support@eggsense.com"
+                  left={(props) => <List.Icon {...props} icon="email" />}
                   onPress={() =>
                     Alert.alert(
-                      "Video Tutorials",
-                      "Video tutorials worden binnenkort beschikbaar"
+                      "Support",
+                      "Voor vragen of problemen:\n\nEmail: support@eggsense.com\nTelefoon: +32 123 45 67 89"
                     )
                   }
-                  style={styles.dataButton}
-                  icon="video"
-                >
-                  Video Tutorials
-                </Button>
+                />
               </Card.Content>
             </Card>
 
-            {/* Danger Zone */}
-            <Card style={[styles.card, styles.dangerCard]}>
+            <Card style={styles.card}>
               <Card.Content>
-                <Title style={styles.dangerTitle}>Gevaarlijke Zone</Title>
-
-                <Button
-                  mode="outlined"
-                  onPress={resetApp}
-                  style={styles.dataButton}
-                  textColor="#F44336"
-                  icon="delete-forever"
-                >
-                  Alle Data Wissen
-                </Button>
-
-                <Text style={styles.warningText}>
-                  ⚠️ Deze actie kan niet ongedaan worden gemaakt!
+                <Title style={styles.cardTitle}>Over EggSense</Title>
+                <Text style={styles.aboutText}>
+                  EggSense is een professioneel management systeem voor
+                  pluimveebedrijven. Het helpt u bij het bijhouden van
+                  productie, verkoop en voorraden.
                 </Text>
+                <Divider style={styles.divider} />
+                <List.Item
+                  title="Privacy Beleid"
+                  left={(props) => <List.Icon {...props} icon="shield-lock" />}
+                  right={(props) => (
+                    <List.Icon {...props} icon="chevron-right" />
+                  )}
+                  onPress={() =>
+                    Alert.alert(
+                      "Privacy Beleid",
+                      "Uw gegevens worden veilig opgeslagen en nooit gedeeld met derden."
+                    )
+                  }
+                />
+                <Divider />
+                <List.Item
+                  title="Algemene Voorwaarden"
+                  left={(props) => (
+                    <List.Icon {...props} icon="file-document" />
+                  )}
+                  right={(props) => (
+                    <List.Icon {...props} icon="chevron-right" />
+                  )}
+                  onPress={() =>
+                    Alert.alert(
+                      "Algemene Voorwaarden",
+                      "Algemene voorwaarden worden binnenkort beschikbaar."
+                    )
+                  }
+                />
               </Card.Content>
             </Card>
           </>
         )}
 
-        {/* App Info */}
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title style={styles.cardTitle}>App Informatie</Title>
-            <List.Item
-              title="Versie"
-              description="1.0.0"
-              left={(props) => <List.Icon {...props} icon="information" />}
-            />
-            <Divider />
-            <List.Item
-              title="Ontwikkelaar"
-              description="EggSense Solutions"
-              left={(props) => <List.Icon {...props} icon="code-tags" />}
-            />
-            <Divider />
-            <List.Item
-              title="Support"
-              description="support@eggsense.nl"
-              left={(props) => <List.Icon {...props} icon="email" />}
-              onPress={() =>
-                Alert.alert("Contact", "E-mail client wordt geopend...")
-              }
-            />
-            <Divider />
-            <List.Item
-              title="Website"
-              description="www.eggsense.nl"
-              left={(props) => <List.Icon {...props} icon="web" />}
-              onPress={() => Alert.alert("Website", "Browser wordt geopend...")}
-            />
-          </Card.Content>
-        </Card>
+        {/* Account Settings */}
+        {selectedCategory === "account" && (
+          <>
+            <Card style={styles.card}>
+              <Card.Content>
+                <Title style={styles.cardTitle}>Account Informatie</Title>
+                <View style={styles.accountInfo}>
+                  <List.Item
+                    title="Gebruikersnaam"
+                    description={user?.username || "Niet beschikbaar"}
+                    left={(props) => <List.Icon {...props} icon="account" />}
+                  />
+                  <Divider />
+                  <List.Item
+                    title="Rol"
+                    description={user?.role || "Gebruiker"}
+                    left={(props) => (
+                      <List.Icon {...props} icon="shield-account" />
+                    )}
+                  />
+                </View>
+              </Card.Content>
+            </Card>
 
-        {/* Account Section */}
-        <Card style={styles.card}>
-          <Card.Content>
-            <Title style={styles.cardTitle}>Account</Title>
-            <View style={styles.accountInfo}>
-              <List.Item
-                title="Ingelogd als"
-                description="test@eggsense.nl"
-                left={(props) => <List.Icon {...props} icon="account-circle" />}
-              />
-            </View>
-
-            <Button
-              mode="contained"
-              onPress={handleLogout}
-              style={styles.logoutButton}
-              buttonColor="#F44336"
-              icon="logout"
-            >
-              Uitloggen
-            </Button>
-          </Card.Content>
-        </Card>
+            <Card style={styles.card}>
+              <Card.Content>
+                <Title style={styles.cardTitle}>Account Acties</Title>
+                <Button
+                  mode="contained"
+                  onPress={handleLogout}
+                  style={styles.logoutButton}
+                  buttonColor="#F44336"
+                  icon="logout"
+                >
+                  Uitloggen
+                </Button>
+              </Card.Content>
+            </Card>
+          </>
+        )}
       </ScrollView>
 
       {/* Stall Edit Dialog */}
@@ -1008,12 +457,16 @@ export default function SettingsScreen({ navigation, route }) {
         <Dialog
           visible={editStallDialogVisible}
           onDismiss={() => setEditStallDialogVisible(false)}
+          style={styles.dialog}
         >
           <Dialog.Title>
             {selectedStall ? "Stal Bewerken" : "Nieuwe Stal"}
           </Dialog.Title>
-          <Dialog.ScrollArea>
-            <ScrollView style={styles.dialogScroll}>
+          <Dialog.Content>
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled={true}
+            >
               <TextInput
                 label="Stal Naam *"
                 value={editedStall.name}
@@ -1021,44 +474,86 @@ export default function SettingsScreen({ navigation, route }) {
                   setEditedStall({ ...editedStall, name: text })
                 }
                 style={styles.dialogInput}
+                mode="outlined"
                 left={<TextInput.Icon icon="barn" />}
               />
 
               <TextInput
-                label="Aantal Kippen *"
-                value={editedStall.totalChickens}
+                label="Ras"
+                value={editedStall.breed}
                 onChangeText={(text) =>
-                  setEditedStall({ ...editedStall, totalChickens: text })
+                  setEditedStall({ ...editedStall, breed: text })
+                }
+                style={styles.dialogInput}
+                mode="outlined"
+                left={<TextInput.Icon icon="bird" />}
+              />
+
+              <TextInput
+                label="Capaciteit (maximum aantal kippen) *"
+                value={editedStall.capacity}
+                onChangeText={(text) =>
+                  setEditedStall({ ...editedStall, capacity: text })
                 }
                 keyboardType="numeric"
                 style={styles.dialogInput}
+                mode="outlined"
                 left={<TextInput.Icon icon="counter" />}
               />
 
-              <Text style={styles.dialogLabel}>Kippenras:</Text>
-              <RadioButton.Group
-                onValueChange={(value) =>
-                  setEditedStall({ ...editedStall, breed: value })
-                }
-                value={editedStall.breed}
-              >
-                <RadioButton.Item label="Bruine Leghennen" value="brown" />
-                <RadioButton.Item label="Witte Leghennen" value="white" />
-                <RadioButton.Item label="Gemengd" value="mixed" />
-              </RadioButton.Group>
+              {!selectedStall && (
+                <TextInput
+                  label="Huidig aantal kippen"
+                  value={editedStall.initialChickenCount}
+                  onChangeText={(text) =>
+                    setEditedStall({
+                      ...editedStall,
+                      initialChickenCount: text,
+                    })
+                  }
+                  keyboardType="numeric"
+                  style={styles.dialogInput}
+                  mode="outlined"
+                  left={<TextInput.Icon icon="checkbox-multiple-marked" />}
+                  placeholder={editedStall.capacity || "0"}
+                />
+              )}
+
+              {selectedStall && (
+                <View style={styles.infoBox}>
+                  <Icon name="information" size={20} color="#2196F3" />
+                  <Text style={styles.infoText}>
+                    Huidige bezetting: {selectedStall.currentChickenCount || 0}{" "}
+                    kippen
+                  </Text>
+                </View>
+              )}
 
               <TextInput
-                label="Startdatum Koppel"
-                value={editedStall.setupDate}
+                label="Notities"
+                value={editedStall.notes}
                 onChangeText={(text) =>
-                  setEditedStall({ ...editedStall, setupDate: text })
+                  setEditedStall({ ...editedStall, notes: text })
                 }
+                multiline
+                numberOfLines={3}
                 style={styles.dialogInput}
-                left={<TextInput.Icon icon="calendar" />}
-                placeholder="YYYY-MM-DD"
+                mode="outlined"
+                left={<TextInput.Icon icon="note-text" />}
               />
+
+              <View style={styles.switchRow}>
+                <Text style={styles.switchLabel}>Stal actief</Text>
+                <Switch
+                  value={editedStall.active}
+                  onValueChange={(value) =>
+                    setEditedStall({ ...editedStall, active: value })
+                  }
+                  thumbColor={editedStall.active ? "#2E7D32" : "#f4f3f4"}
+                />
+              </View>
             </ScrollView>
-          </Dialog.ScrollArea>
+          </Dialog.Content>
           <Dialog.Actions>
             <Button onPress={() => setEditStallDialogVisible(false)}>
               Annuleren
@@ -1074,28 +569,22 @@ export default function SettingsScreen({ navigation, route }) {
           visible={deleteDialogVisible}
           onDismiss={() => setDeleteDialogVisible(false)}
         >
-          <Dialog.Title>App Resetten</Dialog.Title>
+          <Dialog.Title>Stal Verwijderen</Dialog.Title>
           <Dialog.Content>
-            <Text style={styles.deleteWarningText}>
-              Weet u absoluut zeker dat u alle data wilt wissen?
+            <Text>
+              Weet je zeker dat je de stal "{stallToDelete?.name}" wilt
+              verwijderen?
             </Text>
-            <Text style={styles.deleteWarningSubtext}>
-              Dit omvat:
-              {"\n"}• Alle productiegegevens
-              {"\n"}• Klanten en bestellingen
-              {"\n"}• Voer leveringen
-              {"\n"}• Stallen configuratie
-              {"\n"}• Instellingen
-              {"\n\n"}
-              Deze actie kan NIET ongedaan worden gemaakt!
+            <Text style={styles.deleteWarning}>
+              Deze actie kan niet ongedaan worden gemaakt.
             </Text>
           </Dialog.Content>
           <Dialog.Actions>
             <Button onPress={() => setDeleteDialogVisible(false)}>
               Annuleren
             </Button>
-            <Button textColor="#F44336" onPress={confirmReset}>
-              Alles Wissen
+            <Button onPress={deleteStall} textColor="#F44336">
+              Verwijderen
             </Button>
           </Dialog.Actions>
         </Dialog>
@@ -1109,15 +598,33 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f5f5f5",
   },
-  content: {
+  loadingContainer: {
     flex: 1,
-    padding: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: "#666",
   },
   header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
+  },
+  headerTitle: {
     fontSize: 24,
     fontWeight: "bold",
     color: "#2E7D32",
-    marginBottom: 16,
+  },
+  content: {
+    flex: 1,
+    padding: 16,
   },
   categorySelector: {
     marginBottom: 16,
@@ -1136,23 +643,18 @@ const styles = StyleSheet.create({
     color: "#2E7D32",
     fontSize: 18,
   },
-  input: {
-    marginBottom: 12,
-    backgroundColor: "white",
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 40,
   },
-  sectionLabel: {
+  emptyText: {
+    fontSize: 16,
+    color: "#999",
+    marginBottom: 4,
+  },
+  emptySubtext: {
     fontSize: 14,
-    fontWeight: "600",
-    color: "#666666",
-    marginTop: 8,
-    marginBottom: 8,
-  },
-  saveButton: {
-    marginTop: 16,
-    paddingVertical: 4,
-  },
-  divider: {
-    marginVertical: 16,
+    color: "#bbb",
   },
   stallItem: {
     marginBottom: 16,
@@ -1174,15 +676,21 @@ const styles = StyleSheet.create({
   },
   stallDetails: {
     fontSize: 13,
-    color: "#666666",
+    color: "#666",
     marginBottom: 2,
   },
-  stallBreed: {
+  stallNotes: {
     fontSize: 12,
-    color: "#999999",
+    color: "#999",
+    fontStyle: "italic",
   },
   stallActions: {
     alignItems: "flex-end",
+  },
+  stallStatusLabel: {
+    fontSize: 12,
+    color: "#666",
+    marginBottom: 4,
   },
   stallButtons: {
     flexDirection: "row",
@@ -1200,55 +708,56 @@ const styles = StyleSheet.create({
   stallDivider: {
     marginTop: 8,
   },
-  dataButton: {
-    marginBottom: 8,
+  aboutText: {
+    fontSize: 14,
+    color: "#666",
+    lineHeight: 20,
+    marginBottom: 16,
   },
-  dangerCard: {
-    backgroundColor: "#FFEBEE",
-  },
-  dangerTitle: {
-    color: "#F44336",
-    fontSize: 18,
-    marginBottom: 12,
-  },
-  warningText: {
-    fontSize: 12,
-    color: "#F44336",
-    textAlign: "center",
-    marginTop: 8,
-    fontStyle: "italic",
+  divider: {
+    marginVertical: 12,
   },
   accountInfo: {
     backgroundColor: "#f8f9fa",
     borderRadius: 8,
-    marginBottom: 16,
   },
   logoutButton: {
     paddingVertical: 4,
+    marginTop: 8,
   },
-  dialogScroll: {
-    maxHeight: 400,
+  dialog: {
+    maxHeight: "80%",
   },
   dialogInput: {
     marginBottom: 12,
-    backgroundColor: "white",
   },
-  dialogLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#666666",
-    marginTop: 8,
-    marginBottom: 8,
+  switchRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 12,
   },
-  deleteWarningText: {
+  switchLabel: {
     fontSize: 16,
-    fontWeight: "bold",
-    color: "#F44336",
-    marginBottom: 12,
+    color: "#333",
   },
-  deleteWarningSubtext: {
+  deleteWarning: {
+    marginTop: 8,
+    color: "#F44336",
+    fontStyle: "italic",
+  },
+  infoBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E3F2FD",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+    gap: 8,
+  },
+  infoText: {
     fontSize: 14,
-    color: "#666666",
-    lineHeight: 20,
+    color: "#1976D2",
+    flex: 1,
   },
 });

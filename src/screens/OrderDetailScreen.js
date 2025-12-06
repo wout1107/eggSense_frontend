@@ -1,586 +1,536 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   Alert,
-  TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import {
   Card,
-  Title,
-  Paragraph,
   Button,
   Divider,
   Chip,
   IconButton,
-  List,
-  Portal,
   Dialog,
-  RadioButton,
+  Portal,
   TextInput,
+  Menu,
 } from "react-native-paper";
-import { useNavigation } from "@react-navigation/native";
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import salesService from "../services/salesService";
+import customerService from "../services/customerService";
 
-export default function OrderDetailScreen({ route }) {
-  const navigation = useNavigation();
+export default function OrderDetailScreen({ route, navigation }) {
   const { orderId } = route.params;
+  const [order, setOrder] = useState(null);
+  const [customer, setCustomer] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
 
-  // Mock order data - in real app, fetch from storage/API
-  const [order, setOrder] = useState({
-    id: orderId,
-    orderNumber: "ORD-2024-001",
-    customerId: "1",
-    customerName: "Jan Bakker",
-    customerEmail: "jan@bakkerij.nl",
-    customerPhone: "06-12345678",
-    customerAddress: "Hoofdstraat 123, Amsterdam",
-    date: "2024-01-15",
-    deliveryDate: "2024-01-16",
-    small: 20,
-    medium: 30,
-    large: 25,
-    pricePerEgg: 0.25,
-    total: 18.75,
-    status: "Pending",
-    paymentStatus: "Openstaand",
-    paymentMethod: "Factuur",
-    notes: "Levering voor 10:00 's ochtends",
-    trackingInfo: {
-      ordered: { date: "2024-01-15 09:30", completed: true },
-      preparing: { date: "2024-01-15 10:15", completed: true },
-      packed: { date: null, completed: false },
-      inTransit: { date: null, completed: false },
-      delivered: { date: null, completed: false },
-    },
-  });
+  const [editedOrder, setEditedOrder] = useState(null);
 
-  const [statusDialogVisible, setStatusDialogVisible] = useState(false);
-  const [paymentDialogVisible, setPaymentDialogVisible] = useState(false);
-  const [notesDialogVisible, setNotesDialogVisible] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState(order.status);
-  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState(
-    order.paymentStatus
-  );
-  const [orderNotes, setOrderNotes] = useState(order.notes);
+  useEffect(() => {
+    loadOrderDetails();
+  }, [orderId]);
+
+  const loadOrderDetails = async () => {
+    try {
+      setLoading(true);
+      // Load order details
+      const orderData = await salesService.getOrder(orderId);
+      setOrder(orderData);
+      setEditedOrder({
+        customerId: orderData.customerId,
+        eggsSmall: orderData.eggsSmall.toString(),
+        eggsMedium: orderData.eggsMedium.toString(),
+        eggsLarge: orderData.eggsLarge.toString(),
+        eggsRejected: orderData.eggsRejected?.toString() || "0",
+        totalPrice: orderData.totalPrice.toString(),
+        notes: orderData.notes || "",
+      });
+
+      // Load customer details
+      const customerData = await customerService.getCustomer(
+        orderData.customerId
+      );
+      setCustomer(customerData);
+    } catch (error) {
+      console.error("Error loading order details:", error);
+      Alert.alert("Fout", "Kon ordergegevens niet ophalen");
+      navigation.goBack();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateOrder = async () => {
+    const totalEggs =
+      parseInt(editedOrder.eggsSmall || 0) +
+      parseInt(editedOrder.eggsMedium || 0) +
+      parseInt(editedOrder.eggsLarge || 0);
+
+    if (totalEggs === 0) {
+      Alert.alert("Fout", "Voer minstens één type ei in");
+      return;
+    }
+
+    try {
+      await salesService.updateOrder(orderId, {
+        customerId: editedOrder.customerId,
+        eggsSmall: parseInt(editedOrder.eggsSmall || 0),
+        eggsMedium: parseInt(editedOrder.eggsMedium || 0),
+        eggsLarge: parseInt(editedOrder.eggsLarge || 0),
+        eggsRejected: parseInt(editedOrder.eggsRejected || 0),
+        totalPrice: parseFloat(editedOrder.totalPrice || 0),
+        notes: editedOrder.notes,
+      });
+
+      setShowEditDialog(false);
+      await loadOrderDetails();
+      Alert.alert("Succes", "Order succesvol bijgewerkt");
+    } catch (error) {
+      console.error("Error updating order:", error);
+      Alert.alert("Fout", "Kon order niet bijwerken");
+    }
+  };
+
+  const handleDeleteOrder = async () => {
+    try {
+      await salesService.deleteOrder(orderId);
+      setShowDeleteDialog(false);
+      Alert.alert("Succes", "Order succesvol verwijderd", [
+        { text: "OK", onPress: () => navigation.goBack() },
+      ]);
+    } catch (error) {
+      console.error("Error deleting order:", error);
+      Alert.alert("Fout", "Kon order niet verwijderen");
+    }
+  };
+
+  const handleStatusUpdate = async (newStatus) => {
+    try {
+      await salesService.updateStatus(orderId, newStatus);
+      await loadOrderDetails();
+      Alert.alert("Succes", "Status bijgewerkt");
+    } catch (error) {
+      console.error("Error updating status:", error);
+      Alert.alert("Fout", "Kon status niet bijwerken");
+    }
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
-      case "Geleverd":
-        return "#4CAF50";
-      case "In Transit":
+      case "PENDING":
+        return "#FF9800";
+      case "CONFIRMED":
         return "#2196F3";
-      case "Pending":
-        return "#FF9800";
-      case "Geannuleerd":
-        return "#F44336";
-      default:
-        return "#666";
-    }
-  };
-
-  const getPaymentStatusColor = (status) => {
-    switch (status) {
-      case "Betaald":
+      case "DELIVERED":
         return "#4CAF50";
-      case "Openstaand":
-        return "#FF9800";
-      case "Achterstallig":
+      case "CANCELLED":
         return "#F44336";
       default:
-        return "#666";
+        return "#999";
     }
   };
 
-  const updateOrderStatus = () => {
-    setOrder({ ...order, status: selectedStatus });
-    setStatusDialogVisible(false);
-
-    // Update tracking info based on status
-    const newTrackingInfo = { ...order.trackingInfo };
-    const now = new Date().toISOString().slice(0, 16).replace("T", " ");
-
-    switch (selectedStatus) {
-      case "In Transit":
-        newTrackingInfo.packed = { date: now, completed: true };
-        newTrackingInfo.inTransit = { date: now, completed: true };
-        break;
-      case "Geleverd":
-        newTrackingInfo.packed = { date: now, completed: true };
-        newTrackingInfo.inTransit = { date: now, completed: true };
-        newTrackingInfo.delivered = { date: now, completed: true };
-        break;
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case "PENDING":
+        return "In behandeling";
+      case "CONFIRMED":
+        return "Bevestigd";
+      case "DELIVERED":
+        return "Geleverd";
+      case "CANCELLED":
+        return "Geannuleerd";
+      default:
+        return status;
     }
-
-    setOrder({
-      ...order,
-      status: selectedStatus,
-      trackingInfo: newTrackingInfo,
-    });
-    Alert.alert("Succes", `Order status bijgewerkt naar ${selectedStatus}`);
   };
 
-  const updatePaymentStatus = () => {
-    setOrder({ ...order, paymentStatus: selectedPaymentStatus });
-    setPaymentDialogVisible(false);
-    Alert.alert(
-      "Succes",
-      `Betaalstatus bijgewerkt naar ${selectedPaymentStatus}`
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2E7D32" />
+        <Text style={styles.loadingText}>Laden...</Text>
+      </View>
     );
-  };
+  }
 
-  const updateNotes = () => {
-    setOrder({ ...order, notes: orderNotes });
-    setNotesDialogVisible(false);
-    Alert.alert("Succes", "Notities bijgewerkt");
-  };
-
-  const cancelOrder = () => {
-    Alert.alert(
-      "Order Annuleren",
-      "Weet u zeker dat u deze order wilt annuleren?",
-      [
-        { text: "Nee", style: "cancel" },
-        {
-          text: "Ja, Annuleren",
-          style: "destructive",
-          onPress: () => {
-            setOrder({ ...order, status: "Geannuleerd" });
-            Alert.alert("Order Geannuleerd", "De order is geannuleerd");
-          },
-        },
-      ]
+  if (!order || !customer) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text>Order niet gevonden</Text>
+      </View>
     );
-  };
+  }
 
-  const printInvoice = () => {
-    Alert.alert("Factuur Printen", "Factuur wordt gegenereerd en geprint...");
-  };
-
-  const sendInvoice = () => {
-    Alert.alert(
-      "Factuur Versturen",
-      `Factuur wordt verzonden naar ${order.customerEmail}`
-    );
-  };
-
-  const viewCustomer = () => {
-    navigation.navigate("CustomerDetail", { customerId: order.customerId });
-  };
-
-  const totalEggs = order.small + order.medium + order.large;
+  const totalEggs =
+    (order.eggsSmall || 0) + (order.eggsMedium || 0) + (order.eggsLarge || 0);
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Header */}
+    <View style={styles.container}>
       <View style={styles.header}>
-        <View>
-          <Text style={styles.orderNumber}>{order.orderNumber}</Text>
-          <Text style={styles.orderDate}>Besteld op {order.date}</Text>
+        <IconButton
+          icon="arrow-left"
+          size={24}
+          onPress={() => navigation.goBack()}
+          iconColor="#fff"
+        />
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>Order #{order.id}</Text>
+          <Text style={styles.headerSubtitle}>
+            {new Date(order.saleTime).toLocaleDateString("nl-NL", {
+              day: "2-digit",
+              month: "long",
+              year: "numeric",
+            })}
+          </Text>
         </View>
-        <View style={styles.statusContainer}>
-          <Chip
-            mode="flat"
-            textStyle={{
-              color: getStatusColor(order.status),
-              fontWeight: "bold",
+        <Chip
+          style={[
+            styles.statusChip,
+            { backgroundColor: getStatusColor(order.status) },
+          ]}
+          textStyle={styles.statusText}
+        >
+          {getStatusLabel(order.status)}
+        </Chip>
+        <Menu
+          visible={menuVisible}
+          onDismiss={() => setMenuVisible(false)}
+          anchor={
+            <IconButton
+              icon="dots-vertical"
+              size={24}
+              onPress={() => setMenuVisible(true)}
+              iconColor="#fff"
+            />
+          }
+        >
+          <Menu.Item
+            onPress={() => {
+              setMenuVisible(false);
+              setShowEditDialog(true);
             }}
-            style={[
-              styles.statusChip,
-              { backgroundColor: getStatusColor(order.status) + "20" },
-            ]}
-          >
-            {order.status}
-          </Chip>
-          <Chip
-            mode="flat"
-            textStyle={{
-              color: getPaymentStatusColor(order.paymentStatus),
-              fontWeight: "bold",
+            title="Bewerken"
+            leadingIcon="pencil"
+          />
+          <Menu.Item
+            onPress={() => {
+              setMenuVisible(false);
+              setShowDeleteDialog(true);
             }}
-            style={[
-              styles.paymentChip,
-              {
-                backgroundColor:
-                  getPaymentStatusColor(order.paymentStatus) + "20",
-              },
-            ]}
-          >
-            {order.paymentStatus}
-          </Chip>
-        </View>
+            title="Verwijderen"
+            leadingIcon="delete"
+          />
+        </Menu>
       </View>
 
-      {/* Customer Info */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <View style={styles.cardHeader}>
-            <Title style={styles.cardTitle}>Klant Informatie</Title>
-            <Button mode="text" onPress={viewCustomer} compact>
-              Details
-            </Button>
-          </View>
-          <TouchableOpacity onPress={viewCustomer}>
-            <List.Item
-              title={order.customerName}
-              description={order.customerEmail}
-              left={(props) => <List.Icon {...props} icon="account" />}
-              right={(props) => <List.Icon {...props} icon="chevron-right" />}
+      <ScrollView style={styles.content}>
+        {/* Customer Information */}
+        <Card
+          style={styles.card}
+          onPress={() =>
+            navigation.navigate("CustomerDetail", { customerId: customer.id })
+          }
+        >
+          <Card.Title
+            title="Klantinformatie"
+            subtitle="Tik om klantdetails te bekijken"
+            left={(props) => <Icon {...props} name="account" size={24} />}
+            right={(props) => (
+              <Icon {...props} name="chevron-right" size={24} />
+            )}
+          />
+          <Card.Content>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Naam:</Text>
+              <Text style={styles.infoValue}>{customer.name}</Text>
+            </View>
+            {customer.email && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Email:</Text>
+                <Text style={styles.infoValue}>{customer.email}</Text>
+              </View>
+            )}
+            {customer.phone && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Telefoon:</Text>
+                <Text style={styles.infoValue}>{customer.phone}</Text>
+              </View>
+            )}
+            {customer.address && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Adres:</Text>
+                <Text style={styles.infoValue}>{customer.address}</Text>
+              </View>
+            )}
+          </Card.Content>
+        </Card>
+
+        {/* Order Details */}
+        <Card style={styles.card}>
+          <Card.Title
+            title="Order Details"
+            left={(props) => <Icon {...props} name="receipt" size={24} />}
+          />
+          <Card.Content>
+            <View style={styles.eggBreakdown}>
+              {order.eggsSmall > 0 && (
+                <View style={styles.eggRow}>
+                  <View style={styles.eggInfo}>
+                    <Icon name="egg" size={20} color="#666" />
+                    <Text style={styles.eggLabel}>Kleine Eieren</Text>
+                  </View>
+                  <Text style={styles.eggValue}>{order.eggsSmall}</Text>
+                </View>
+              )}
+              {order.eggsMedium > 0 && (
+                <View style={styles.eggRow}>
+                  <View style={styles.eggInfo}>
+                    <Icon name="egg" size={24} color="#666" />
+                    <Text style={styles.eggLabel}>Middelgrote Eieren</Text>
+                  </View>
+                  <Text style={styles.eggValue}>{order.eggsMedium}</Text>
+                </View>
+              )}
+              {order.eggsLarge > 0 && (
+                <View style={styles.eggRow}>
+                  <View style={styles.eggInfo}>
+                    <Icon name="egg" size={28} color="#666" />
+                    <Text style={styles.eggLabel}>Grote Eieren</Text>
+                  </View>
+                  <Text style={styles.eggValue}>{order.eggsLarge}</Text>
+                </View>
+              )}
+              {order.eggsRejected > 0 && (
+                <View style={styles.eggRow}>
+                  <View style={styles.eggInfo}>
+                    <Icon name="egg-off" size={24} color="#F44336" />
+                    <Text style={styles.eggLabel}>Afgekeurd</Text>
+                  </View>
+                  <Text style={styles.eggValue}>{order.eggsRejected}</Text>
+                </View>
+              )}
+            </View>
+
+            <Divider style={styles.divider} />
+
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Totaal aantal eieren:</Text>
+              <Text style={styles.totalValue}>{totalEggs}</Text>
+            </View>
+
+            <View style={styles.totalRow}>
+              <Text style={styles.priceLabel}>Totaalprijs:</Text>
+              <Text style={styles.priceValue}>
+                €{order.totalPrice.toFixed(2)}
+              </Text>
+            </View>
+          </Card.Content>
+        </Card>
+
+        {/* Notes */}
+        {order.notes && (
+          <Card style={styles.card}>
+            <Card.Title
+              title="Notities"
+              left={(props) => <Icon {...props} name="note-text" size={24} />}
             />
-            <List.Item
-              title={order.customerPhone}
-              description={order.customerAddress}
-              left={(props) => <List.Icon {...props} icon="map-marker" />}
-            />
-          </TouchableOpacity>
-        </Card.Content>
-      </Card>
+            <Card.Content>
+              <Text style={styles.notesText}>{order.notes}</Text>
+            </Card.Content>
+          </Card>
+        )}
 
-      {/* Order Details */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <Title style={styles.cardTitle}>Order Details</Title>
-          <View style={styles.orderDetailsRow}>
-            <Text style={styles.detailLabel}>Leverdatum:</Text>
-            <Text style={styles.detailValue}>{order.deliveryDate}</Text>
-          </View>
-          <View style={styles.orderDetailsRow}>
-            <Text style={styles.detailLabel}>Betaalmethode:</Text>
-            <Text style={styles.detailValue}>{order.paymentMethod}</Text>
-          </View>
-          <Divider style={styles.divider} />
-          <View style={styles.eggBreakdown}>
-            <Text style={styles.breakdownTitle}>Eieren Specificatie:</Text>
-            {order.small > 0 && (
-              <View style={styles.eggRow}>
-                <Chip icon="egg" style={styles.eggSizeChip}>
-                  Klein (S)
-                </Chip>
-                <Text style={styles.eggQuantity}>{order.small} stuks</Text>
-                <Text style={styles.eggPrice}>
-                  €{(order.small * order.pricePerEgg).toFixed(2)}
+        {/* Order Timeline */}
+        <Card style={styles.card}>
+          <Card.Title
+            title="Order Status"
+            left={(props) => <Icon {...props} name="timeline" size={24} />}
+          />
+          <Card.Content>
+            <View style={styles.timeline}>
+              <View style={styles.timelineItem}>
+                <View
+                  style={[styles.timelineDot, { backgroundColor: "#4CAF50" }]}
+                />
+                <Text style={styles.timelineText}>Order aangemaakt</Text>
+                <Text style={styles.timelineDate}>
+                  {new Date(order.saleTime).toLocaleString("nl-NL")}
                 </Text>
               </View>
-            )}
-            {order.medium > 0 && (
-              <View style={styles.eggRow}>
-                <Chip icon="egg" style={styles.eggSizeChip}>
-                  Medium (M)
-                </Chip>
-                <Text style={styles.eggQuantity}>{order.medium} stuks</Text>
-                <Text style={styles.eggPrice}>
-                  €{(order.medium * order.pricePerEgg).toFixed(2)}
-                </Text>
-              </View>
-            )}
-            {order.large > 0 && (
-              <View style={styles.eggRow}>
-                <Chip icon="egg" style={styles.eggSizeChip}>
-                  Groot (L)
-                </Chip>
-                <Text style={styles.eggQuantity}>{order.large} stuks</Text>
-                <Text style={styles.eggPrice}>
-                  €{(order.large * order.pricePerEgg).toFixed(2)}
-                </Text>
-              </View>
-            )}
-          </View>
-          <Divider style={styles.divider} />
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Totaal ({totalEggs} eieren):</Text>
-            <Text style={styles.totalAmount}>€{order.total.toFixed(2)}</Text>
-          </View>
-        </Card.Content>
-      </Card>
-
-      {/* Tracking Info */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <Title style={styles.cardTitle}>Order Tracking</Title>
-          <View style={styles.trackingContainer}>
-            <View
-              style={[
-                styles.trackingStep,
-                order.trackingInfo.ordered.completed &&
-                  styles.trackingStepCompleted,
-              ]}
-            >
-              <View style={styles.trackingIconContainer}>
-                <IconButton
-                  icon="clipboard-check"
-                  size={24}
-                  iconColor={
-                    order.trackingInfo.ordered.completed ? "#4CAF50" : "#ccc"
-                  }
-                />
-              </View>
-              <View style={styles.trackingInfo}>
-                <Text style={styles.trackingTitle}>Bestelling Ontvangen</Text>
-                {order.trackingInfo.ordered.date && (
-                  <Text style={styles.trackingDate}>
-                    {order.trackingInfo.ordered.date}
+              {order.status !== "PENDING" && (
+                <View style={styles.timelineItem}>
+                  <View
+                    style={[
+                      styles.timelineDot,
+                      { backgroundColor: getStatusColor(order.status) },
+                    ]}
+                  />
+                  <Text style={styles.timelineText}>
+                    {getStatusLabel(order.status)}
                   </Text>
-                )}
-              </View>
+                </View>
+              )}
             </View>
+          </Card.Content>
+        </Card>
 
-            <View
-              style={[
-                styles.trackingStep,
-                order.trackingInfo.preparing.completed &&
-                  styles.trackingStepCompleted,
-              ]}
-            >
-              <View style={styles.trackingIconContainer}>
-                <IconButton
-                  icon="package-variant"
-                  size={24}
-                  iconColor={
-                    order.trackingInfo.preparing.completed ? "#4CAF50" : "#ccc"
-                  }
-                />
-              </View>
-              <View style={styles.trackingInfo}>
-                <Text style={styles.trackingTitle}>In Voorbereiding</Text>
-                {order.trackingInfo.preparing.date && (
-                  <Text style={styles.trackingDate}>
-                    {order.trackingInfo.preparing.date}
-                  </Text>
-                )}
-              </View>
-            </View>
-
-            <View
-              style={[
-                styles.trackingStep,
-                order.trackingInfo.packed.completed &&
-                  styles.trackingStepCompleted,
-              ]}
-            >
-              <View style={styles.trackingIconContainer}>
-                <IconButton
-                  icon="package"
-                  size={24}
-                  iconColor={
-                    order.trackingInfo.packed.completed ? "#4CAF50" : "#ccc"
-                  }
-                />
-              </View>
-              <View style={styles.trackingInfo}>
-                <Text style={styles.trackingTitle}>Ingepakt</Text>
-                {order.trackingInfo.packed.date && (
-                  <Text style={styles.trackingDate}>
-                    {order.trackingInfo.packed.date}
-                  </Text>
-                )}
-              </View>
-            </View>
-
-            <View
-              style={[
-                styles.trackingStep,
-                order.trackingInfo.inTransit.completed &&
-                  styles.trackingStepCompleted,
-              ]}
-            >
-              <View style={styles.trackingIconContainer}>
-                <IconButton
-                  icon="truck-delivery"
-                  size={24}
-                  iconColor={
-                    order.trackingInfo.inTransit.completed ? "#4CAF50" : "#ccc"
-                  }
-                />
-              </View>
-              <View style={styles.trackingInfo}>
-                <Text style={styles.trackingTitle}>Onderweg</Text>
-                {order.trackingInfo.inTransit.date && (
-                  <Text style={styles.trackingDate}>
-                    {order.trackingInfo.inTransit.date}
-                  </Text>
-                )}
-              </View>
-            </View>
-
-            <View
-              style={[
-                styles.trackingStep,
-                order.trackingInfo.delivered.completed &&
-                  styles.trackingStepCompleted,
-              ]}
-            >
-              <View style={styles.trackingIconContainer}>
-                <IconButton
-                  icon="check-circle"
-                  size={24}
-                  iconColor={
-                    order.trackingInfo.delivered.completed ? "#4CAF50" : "#ccc"
-                  }
-                />
-              </View>
-              <View style={styles.trackingInfo}>
-                <Text style={styles.trackingTitle}>Geleverd</Text>
-                {order.trackingInfo.delivered.date && (
-                  <Text style={styles.trackingDate}>
-                    {order.trackingInfo.delivered.date}
-                  </Text>
-                )}
-              </View>
-            </View>
-          </View>
-        </Card.Content>
-      </Card>
-
-      {/* Notes */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <View style={styles.cardHeader}>
-            <Title style={styles.cardTitle}>Notities</Title>
+        {/* Action Buttons */}
+        {order.status === "PENDING" && (
+          <View style={styles.actionButtons}>
             <Button
-              mode="text"
-              onPress={() => setNotesDialogVisible(true)}
-              compact
+              mode="contained"
+              onPress={() => handleStatusUpdate("CONFIRMED")}
+              style={styles.confirmButton}
+              buttonColor="#4CAF50"
+              icon="check"
             >
-              Bewerken
+              Bevestigen
             </Button>
-          </View>
-          <Paragraph style={styles.notesText}>
-            {order.notes || "Geen notities"}
-          </Paragraph>
-        </Card.Content>
-      </Card>
-
-      {/* Actions */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <Title style={styles.cardTitle}>Acties</Title>
-          <Button
-            mode="contained"
-            onPress={() => setStatusDialogVisible(true)}
-            style={styles.actionButton}
-            buttonColor="#2E7D32"
-            icon="update"
-          >
-            Status Bijwerken
-          </Button>
-          <Button
-            mode="contained"
-            onPress={() => setPaymentDialogVisible(true)}
-            style={styles.actionButton}
-            buttonColor="#1976D2"
-            icon="cash"
-          >
-            Betaalstatus Bijwerken
-          </Button>
-          <Button
-            mode="outlined"
-            onPress={printInvoice}
-            style={styles.actionButton}
-            icon="printer"
-          >
-            Factuur Printen
-          </Button>
-          <Button
-            mode="outlined"
-            onPress={sendInvoice}
-            style={styles.actionButton}
-            icon="email"
-          >
-            Factuur E-mailen
-          </Button>
-          {order.status !== "Geannuleerd" && order.status !== "Geleverd" && (
             <Button
               mode="outlined"
-              onPress={cancelOrder}
-              style={styles.actionButton}
+              onPress={() => handleStatusUpdate("CANCELLED")}
+              style={styles.cancelButton}
               textColor="#F44336"
-              icon="close-circle"
+              icon="close"
             >
-              Order Annuleren
-            </Button>
-          )}
-        </Card.Content>
-      </Card>
-
-      {/* Status Update Dialog */}
-      <Portal>
-        <Dialog
-          visible={statusDialogVisible}
-          onDismiss={() => setStatusDialogVisible(false)}
-        >
-          <Dialog.Title>Order Status Bijwerken</Dialog.Title>
-          <Dialog.Content>
-            <RadioButton.Group
-              onValueChange={(value) => setSelectedStatus(value)}
-              value={selectedStatus}
-            >
-              <RadioButton.Item label="Pending" value="Pending" />
-              <RadioButton.Item label="In Transit" value="In Transit" />
-              <RadioButton.Item label="Geleverd" value="Geleverd" />
-              <RadioButton.Item label="Geannuleerd" value="Geannuleerd" />
-            </RadioButton.Group>
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setStatusDialogVisible(false)}>
               Annuleren
             </Button>
-            <Button onPress={updateOrderStatus}>Opslaan</Button>
+          </View>
+        )}
+
+        {order.status === "CONFIRMED" && (
+          <Button
+            mode="contained"
+            onPress={() => handleStatusUpdate("DELIVERED")}
+            style={styles.deliverButton}
+            buttonColor="#2196F3"
+            icon="truck-delivery"
+          >
+            Markeer als geleverd
+          </Button>
+        )}
+      </ScrollView>
+
+      {/* Edit Order Dialog */}
+      <Portal>
+        <Dialog
+          visible={showEditDialog}
+          onDismiss={() => setShowEditDialog(false)}
+          style={styles.dialog}
+        >
+          <Dialog.Title>Order Bewerken</Dialog.Title>
+          <Dialog.Content>
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled={true}
+            >
+              <TextInput
+                label="Kleine Eieren"
+                value={editedOrder?.eggsSmall || ""}
+                onChangeText={(text) =>
+                  setEditedOrder({ ...editedOrder, eggsSmall: text })
+                }
+                keyboardType="numeric"
+                mode="outlined"
+                style={styles.input}
+              />
+
+              <TextInput
+                label="Middelgrote Eieren"
+                value={editedOrder?.eggsMedium || ""}
+                onChangeText={(text) =>
+                  setEditedOrder({ ...editedOrder, eggsMedium: text })
+                }
+                keyboardType="numeric"
+                mode="outlined"
+                style={styles.input}
+              />
+
+              <TextInput
+                label="Grote Eieren"
+                value={editedOrder?.eggsLarge || ""}
+                onChangeText={(text) =>
+                  setEditedOrder({ ...editedOrder, eggsLarge: text })
+                }
+                keyboardType="numeric"
+                mode="outlined"
+                style={styles.input}
+              />
+
+              <TextInput
+                label="Afgekeurd"
+                value={editedOrder?.eggsRejected || ""}
+                onChangeText={(text) =>
+                  setEditedOrder({ ...editedOrder, eggsRejected: text })
+                }
+                keyboardType="numeric"
+                mode="outlined"
+                style={styles.input}
+              />
+
+              <TextInput
+                label="Totaalprijs (€)"
+                value={editedOrder?.totalPrice || ""}
+                onChangeText={(text) =>
+                  setEditedOrder({ ...editedOrder, totalPrice: text })
+                }
+                keyboardType="decimal-pad"
+                mode="outlined"
+                style={styles.input}
+              />
+
+              <TextInput
+                label="Notities"
+                value={editedOrder?.notes || ""}
+                onChangeText={(text) =>
+                  setEditedOrder({ ...editedOrder, notes: text })
+                }
+                multiline
+                numberOfLines={3}
+                mode="outlined"
+                style={styles.input}
+              />
+            </ScrollView>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setShowEditDialog(false)}>Annuleren</Button>
+            <Button onPress={handleUpdateOrder}>Opslaan</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>
 
-      {/* Payment Status Dialog */}
+      {/* Delete Confirmation Dialog */}
       <Portal>
         <Dialog
-          visible={paymentDialogVisible}
-          onDismiss={() => setPaymentDialogVisible(false)}
+          visible={showDeleteDialog}
+          onDismiss={() => setShowDeleteDialog(false)}
         >
-          <Dialog.Title>Betaalstatus Bijwerken</Dialog.Title>
+          <Dialog.Title>Order Verwijderen</Dialog.Title>
           <Dialog.Content>
-            <RadioButton.Group
-              onValueChange={(value) => setSelectedPaymentStatus(value)}
-              value={selectedPaymentStatus}
-            >
-              <RadioButton.Item label="Openstaand" value="Openstaand" />
-              <RadioButton.Item label="Betaald" value="Betaald" />
-              <RadioButton.Item label="Achterstallig" value="Achterstallig" />
-            </RadioButton.Group>
+            <Text>Weet je zeker dat je deze order wilt verwijderen?</Text>
+            <Text style={styles.deleteWarning}>
+              Deze actie kan niet ongedaan worden gemaakt.
+            </Text>
           </Dialog.Content>
           <Dialog.Actions>
-            <Button onPress={() => setPaymentDialogVisible(false)}>
+            <Button onPress={() => setShowDeleteDialog(false)}>
               Annuleren
             </Button>
-            <Button onPress={updatePaymentStatus}>Opslaan</Button>
+            <Button onPress={handleDeleteOrder} textColor="#F44336">
+              Verwijderen
+            </Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>
-
-      {/* Notes Dialog */}
-      <Portal>
-        <Dialog
-          visible={notesDialogVisible}
-          onDismiss={() => setNotesDialogVisible(false)}
-        >
-          <Dialog.Title>Notities Bewerken</Dialog.Title>
-          <Dialog.Content>
-            <TextInput
-              value={orderNotes}
-              onChangeText={setOrderNotes}
-              multiline
-              numberOfLines={4}
-              style={styles.notesInput}
-            />
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setNotesDialogVisible(false)}>
-              Annuleren
-            </Button>
-            <Button onPress={updateNotes}>Opslaan</Button>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
-    </ScrollView>
+    </View>
   );
 }
 
@@ -588,145 +538,179 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
-    padding: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: "#666",
   },
   header: {
-    marginBottom: 20,
-  },
-  orderNumber: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#2E7D32",
-    marginBottom: 4,
-  },
-  orderDate: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 12,
-  },
-  statusContainer: {
     flexDirection: "row",
-    gap: 8,
+    alignItems: "center",
+    padding: 16,
+    backgroundColor: "#2E7D32",
+  },
+  headerContent: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#fff",
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: "#fff",
+    marginTop: 2,
   },
   statusChip: {
-    marginBottom: 4,
+    marginLeft: 8,
   },
-  paymentChip: {
-    height: 32,
+  statusText: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  content: {
+    flex: 1,
   },
   card: {
-    marginBottom: 16,
+    margin: 16,
+    marginBottom: 8,
     elevation: 2,
   },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  cardTitle: {
-    color: "#2E7D32",
-    fontSize: 18,
-  },
-  orderDetailsRow: {
+  infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 8,
   },
-  detailLabel: {
+  infoLabel: {
     fontSize: 14,
     color: "#666",
-  },
-  detailValue: {
-    fontSize: 14,
-    color: "#333",
     fontWeight: "500",
   },
-  divider: {
-    marginVertical: 12,
+  infoValue: {
+    fontSize: 14,
+    color: "#333",
+    flex: 1,
+    textAlign: "right",
   },
   eggBreakdown: {
     marginTop: 8,
-  },
-  breakdownTitle: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 12,
   },
   eggRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    paddingVertical: 12,
   },
-  eggSizeChip: {
-    flex: 1,
+  eggInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
-  eggQuantity: {
-    fontSize: 14,
-    color: "#666",
-    marginLeft: 12,
-    flex: 1,
+  eggLabel: {
+    fontSize: 16,
+    color: "#333",
   },
-  eggPrice: {
-    fontSize: 14,
-    color: "#2E7D32",
+  eggValue: {
+    fontSize: 18,
     fontWeight: "bold",
+    color: "#2E7D32",
+  },
+  divider: {
+    marginVertical: 16,
   },
   totalRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingTop: 8,
+    marginBottom: 8,
   },
   totalLabel: {
     fontSize: 16,
+    color: "#666",
+    fontWeight: "500",
+  },
+  totalValue: {
+    fontSize: 18,
     fontWeight: "bold",
     color: "#333",
   },
-  totalAmount: {
-    fontSize: 20,
+  priceLabel: {
+    fontSize: 18,
+    color: "#333",
+    fontWeight: "bold",
+  },
+  priceValue: {
+    fontSize: 24,
     fontWeight: "bold",
     color: "#2E7D32",
-  },
-  trackingContainer: {
-    marginTop: 12,
-  },
-  trackingStep: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-    opacity: 0.5,
-  },
-  trackingStepCompleted: {
-    opacity: 1,
-  },
-  trackingIconContainer: {
-    marginRight: 12,
-  },
-  trackingInfo: {
-    flex: 1,
-  },
-  trackingTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 2,
-  },
-  trackingDate: {
-    fontSize: 12,
-    color: "#666",
   },
   notesText: {
     fontSize: 14,
     color: "#666",
-    fontStyle: (order) => (!order.notes ? "italic" : "normal"),
+    lineHeight: 20,
   },
-  notesInput: {
-    backgroundColor: "white",
+  timeline: {
+    paddingLeft: 8,
   },
-  actionButton: {
-    marginBottom: 8,
+  timelineItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+    gap: 12,
+  },
+  timelineDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  timelineText: {
+    fontSize: 16,
+    color: "#333",
+    flex: 1,
+  },
+  timelineDate: {
+    fontSize: 12,
+    color: "#999",
+  },
+  actionButtons: {
+    flexDirection: "row",
+    gap: 12,
+    padding: 16,
+  },
+  confirmButton: {
+    flex: 1,
+  },
+  cancelButton: {
+    flex: 1,
+  },
+  deliverButton: {
+    margin: 16,
+  },
+  dialog: {
+    maxHeight: "80%",
+  },
+  scrollArea: {
+    maxHeight: 400,
+    paddingHorizontal: 0,
+  },
+  dialogContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+  },
+  input: {
+    marginBottom: 12,
+  },
+  deleteWarning: {
+    marginTop: 8,
+    color: "#F44336",
+    fontStyle: "italic",
   },
 });

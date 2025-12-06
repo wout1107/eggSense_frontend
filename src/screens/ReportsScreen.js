@@ -5,8 +5,8 @@ import {
   StyleSheet,
   ScrollView,
   Dimensions,
-  TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import {
   Card,
@@ -20,12 +20,16 @@ import {
   Divider,
   ProgressBar,
 } from "react-native-paper";
+import api from "../services/api";
+import productionService from "../services/productionService";
+import salesService from "../services/salesService";
 
 const { width } = Dimensions.get("window");
 
-export default function ReportsScreen() {
+export default function ReportScreen() {
   const [selectedPeriod, setSelectedPeriod] = useState("week");
   const [selectedMetric, setSelectedMetric] = useState("production");
+  const [loading, setLoading] = useState(true);
   const [reportData, setReportData] = useState({
     production: [],
     financial: {},
@@ -35,261 +39,332 @@ export default function ReportsScreen() {
   });
 
   useEffect(() => {
-    generateReportData(selectedPeriod);
+    loadReportData(selectedPeriod);
   }, [selectedPeriod]);
 
-  const generateReportData = (period) => {
-    // Mock data generation based on period
-    const mockProduction = {
-      week: [
-        {
-          day: "Ma",
-          eggs: 245,
-          small: 45,
-          medium: 120,
-          large: 80,
-          target: 250,
-          percentage: 87.5,
+  const loadReportData = async (period) => {
+    try {
+      setLoading(true);
+
+      // Calculate date range based on period
+      const endDate = new Date();
+      const startDate = new Date();
+
+      switch (period) {
+        case "week":
+          startDate.setDate(endDate.getDate() - 7);
+          break;
+        case "month":
+          startDate.setMonth(endDate.getMonth() - 1);
+          break;
+        case "year":
+          startDate.setFullYear(endDate.getFullYear() - 1);
+          break;
+      }
+
+      // Load production data
+      const productionResponse = await productionService.listProduction({
+        start: startDate.toISOString().split("T")[0],
+        end: endDate.toISOString().split("T")[0],
+      });
+
+      // Load sales data
+      const salesResponse = await salesService.listOrders({
+        start: startDate.toISOString().split("T")[0],
+        end: endDate.toISOString().split("T")[0],
+      });
+
+      // Load feed deliveries
+      const feedResponse = await api.get("/feed-deliveries", {
+        params: {
+          start: startDate.toISOString().split("T")[0],
+          end: endDate.toISOString().split("T")[0],
         },
-        {
-          day: "Di",
-          eggs: 238,
-          small: 42,
-          medium: 118,
-          large: 78,
-          target: 250,
-          percentage: 85.0,
-        },
-        {
-          day: "Wo",
-          eggs: 252,
-          small: 48,
-          medium: 125,
-          large: 79,
-          target: 250,
-          percentage: 90.0,
-        },
-        {
-          day: "Do",
-          eggs: 241,
-          small: 44,
-          medium: 119,
-          large: 78,
-          target: 250,
-          percentage: 86.1,
-        },
-        {
-          day: "Vr",
-          eggs: 249,
-          small: 46,
-          medium: 123,
-          large: 80,
-          target: 250,
-          percentage: 89.0,
-        },
-        {
-          day: "Za",
-          eggs: 243,
-          small: 45,
-          medium: 120,
-          large: 78,
-          target: 250,
-          percentage: 86.8,
-        },
-        {
-          day: "Zo",
-          eggs: 247,
-          small: 47,
-          medium: 122,
-          large: 78,
-          target: 250,
-          percentage: 88.2,
-        },
-      ],
-      month: [
-        {
-          day: "Week 1",
-          eggs: 1715,
-          small: 318,
-          medium: 851,
-          large: 546,
-          target: 1750,
-          percentage: 87.2,
-        },
-        {
-          day: "Week 2",
-          eggs: 1698,
-          small: 315,
-          medium: 842,
-          large: 541,
-          target: 1750,
-          percentage: 86.3,
-        },
-        {
-          day: "Week 3",
-          eggs: 1729,
-          small: 321,
-          medium: 857,
-          large: 551,
-          target: 1750,
-          percentage: 87.9,
-        },
-        {
-          day: "Week 4",
-          eggs: 1712,
-          small: 318,
-          medium: 849,
-          large: 545,
-          target: 1750,
-          percentage: 87.0,
-        },
-      ],
-      year: [
-        {
-          day: "Jan",
-          eggs: 7154,
-          small: 1328,
-          medium: 3548,
-          large: 2278,
-          target: 7500,
-          percentage: 86.8,
-        },
-        {
-          day: "Feb",
-          eggs: 6892,
-          small: 1280,
-          medium: 3420,
-          large: 2192,
-          target: 7000,
-          percentage: 87.3,
-        },
-        {
-          day: "Mrt",
-          eggs: 7298,
-          small: 1356,
-          medium: 3620,
-          large: 2322,
-          target: 7500,
-          percentage: 88.5,
-        },
-        {
-          day: "Apr",
-          eggs: 7145,
-          small: 1328,
-          medium: 3545,
-          large: 2272,
-          target: 7500,
-          percentage: 86.9,
-        },
-      ],
+      });
+
+      // Process data
+      const processedData = processReportData(
+        productionResponse,
+        salesResponse,
+        feedResponse.data,
+        period
+      );
+
+      setReportData(processedData);
+    } catch (error) {
+      console.error("Error loading report data:", error);
+      Alert.alert("Fout", "Kon rapportgegevens niet laden");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const processReportData = (production, sales, feedDeliveries, period) => {
+    // Group production data by period
+    const groupedProduction = groupProductionByPeriod(production, period);
+
+    // Calculate financial metrics
+    const financial = calculateFinancialMetrics(sales, feedDeliveries);
+
+    // Calculate performance metrics
+    const performance = calculatePerformanceMetrics(production, feedDeliveries);
+
+    // Calculate trends
+    const trends = calculateTrends(production, sales, period);
+
+    // Generate alerts
+    const alerts = generateAlerts(performance, trends);
+
+    return {
+      production: groupedProduction,
+      financial,
+      performance,
+      trends,
+      alerts,
+    };
+  };
+
+  const groupProductionByPeriod = (production, period) => {
+    const grouped = {};
+
+    production.forEach((record) => {
+      const date = new Date(record.recordDate);
+      let key;
+
+      switch (period) {
+        case "week":
+          key = ["Zo", "Ma", "Di", "Wo", "Do", "Vr", "Za"][date.getDay()];
+          break;
+        case "month":
+          const weekNum = Math.ceil(date.getDate() / 7);
+          key = `Week ${weekNum}`;
+          break;
+        case "year":
+          key = [
+            "Jan",
+            "Feb",
+            "Mrt",
+            "Apr",
+            "Mei",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Okt",
+            "Nov",
+            "Dec",
+          ][date.getMonth()];
+          break;
+      }
+
+      if (!grouped[key]) {
+        grouped[key] = {
+          day: key,
+          eggsSmall: 0,
+          eggsMedium: 0,
+          eggsLarge: 0,
+          eggsRejected: 0,
+          eggs: 0,
+          target: period === "week" ? 250 : period === "month" ? 1750 : 7500,
+          count: 0,
+        };
+      }
+
+      grouped[key].eggsSmall += record.eggsSmall || 0;
+      grouped[key].eggsMedium += record.eggsMedium || 0;
+      grouped[key].eggsLarge += record.eggsLarge || 0;
+      grouped[key].eggsRejected += record.eggsRejected || 0;
+      grouped[key].eggs +=
+        (record.eggsSmall || 0) +
+        (record.eggsMedium || 0) +
+        (record.eggsLarge || 0);
+      grouped[key].count += 1;
+    });
+
+    // Convert to array and calculate percentages
+    return Object.values(grouped).map((item) => ({
+      ...item,
+      small: item.eggsSmall,
+      medium: item.eggsMedium,
+      large: item.eggsLarge,
+      percentage: (item.eggs / item.target) * 100,
+    }));
+  };
+
+  const calculateFinancialMetrics = (sales, feedDeliveries) => {
+    // Calculate revenue
+    const revenue = sales
+      .filter((s) => s.status !== "CANCELLED")
+      .reduce((sum, sale) => sum + sale.totalPrice, 0);
+
+    // Calculate feed costs
+    const feedCost = feedDeliveries.reduce(
+      (sum, delivery) => sum + (delivery.cost || 0),
+      0
+    );
+
+    // Estimate other costs (10% of revenue)
+    const otherCosts = revenue * 0.1;
+
+    const costs = feedCost + otherCosts;
+    const profit = revenue - costs;
+
+    // Calculate revenue per egg size
+    const eggRevenue = {
+      small: sales.reduce((sum, s) => sum + (s.eggsSmall || 0) * 1.9, 0),
+      medium: sales.reduce((sum, s) => sum + (s.eggsMedium || 0) * 2.5, 0),
+      large: sales.reduce((sum, s) => sum + (s.eggsLarge || 0) * 3.2, 0),
     };
 
-    const mockFinancial = {
-      week: {
-        revenue: 435.75,
-        costs: 198.5,
-        profit: 237.25,
-        feedCost: 145.2,
-        otherCosts: 53.3,
-        eggRevenue: { small: 85.5, medium: 245.0, large: 105.25 },
-      },
-      month: {
-        revenue: 1843.2,
-        costs: 789.4,
-        profit: 1053.8,
-        feedCost: 612.8,
-        otherCosts: 176.6,
-        eggRevenue: { small: 362.4, medium: 1035.0, large: 445.8 },
-      },
-      year: {
-        revenue: 22518.4,
-        costs: 9472.8,
-        profit: 13045.6,
-        feedCost: 7353.6,
-        otherCosts: 2119.2,
-        eggRevenue: { small: 4348.8, medium: 12420.0, large: 5349.6 },
-      },
+    return {
+      revenue,
+      costs,
+      profit,
+      feedCost,
+      otherCosts,
+      eggRevenue,
+    };
+  };
+
+  const calculatePerformanceMetrics = (production, feedDeliveries) => {
+    const totalEggs = production.reduce(
+      (sum, p) =>
+        sum + (p.eggsSmall || 0) + (p.eggsMedium || 0) + (p.eggsLarge || 0),
+      0
+    );
+
+    const totalFeed = feedDeliveries.reduce(
+      (sum, f) => sum + (f.quantityKg || 0),
+      0
+    );
+    const totalWater = production.reduce(
+      (sum, p) => sum + (p.waterLiters || 0),
+      0
+    );
+    const totalMortality = production.reduce(
+      (sum, p) => sum + (p.mortality || 0),
+      0
+    );
+
+    const avgDailyEggs = totalEggs / (production.length || 1);
+    const feedConversion = totalFeed / (totalEggs / 1000); // kg feed per 1000 eggs
+    const waterConsumption = totalWater;
+    const mortality = (totalMortality / production.length) * 100;
+
+    // Calculate average egg weight (estimate based on size distribution)
+    const smallWeight =
+      production.reduce((sum, p) => sum + (p.eggsSmall || 0), 0) * 50;
+    const mediumWeight =
+      production.reduce((sum, p) => sum + (p.eggsMedium || 0), 0) * 58;
+    const largeWeight =
+      production.reduce((sum, p) => sum + (p.eggsLarge || 0), 0) * 65;
+    const avgEggWeight = (smallWeight + mediumWeight + largeWeight) / totalEggs;
+
+    // Egg weight distribution
+    const eggWeightDistribution = {
+      small:
+        (production.reduce((sum, p) => sum + (p.eggsSmall || 0), 0) /
+          totalEggs) *
+        100,
+      medium:
+        (production.reduce((sum, p) => sum + (p.eggsMedium || 0), 0) /
+          totalEggs) *
+        100,
+      large:
+        (production.reduce((sum, p) => sum + (p.eggsLarge || 0), 0) /
+          totalEggs) *
+        100,
     };
 
-    const mockPerformance = {
-      week: {
-        avgEggWeight: 58.2,
-        feedConversion: 2.1,
-        waterConsumption: 285.4,
-        mortality: 0.2,
-        avgDailyEggs: 245,
-        eggWeightDistribution: { small: 18.5, medium: 49.2, large: 32.3 },
-      },
-      month: {
-        avgEggWeight: 58.8,
-        feedConversion: 2.0,
-        waterConsumption: 1234.6,
-        mortality: 0.8,
-        avgDailyEggs: 243,
-        eggWeightDistribution: { small: 18.7, medium: 49.5, large: 31.8 },
-      },
-      year: {
-        avgEggWeight: 59.1,
-        feedConversion: 2.05,
-        waterConsumption: 14815.2,
-        mortality: 3.2,
-        avgDailyEggs: 242,
-        eggWeightDistribution: { small: 18.9, medium: 49.8, large: 31.3 },
-      },
+    return {
+      avgEggWeight: avgEggWeight || 58,
+      feedConversion: feedConversion || 2.1,
+      waterConsumption,
+      mortality: mortality || 0,
+      avgDailyEggs,
+      eggWeightDistribution,
     };
+  };
 
-    const mockTrends = {
-      week: {
-        productionTrend: 2.5, // percentage increase
-        feedEfficiencyTrend: -3.2, // percentage decrease (improvement)
-        mortalityTrend: -15.0, // percentage decrease
-        profitTrend: 8.5, // percentage increase
-      },
-      month: {
-        productionTrend: 1.8,
-        feedEfficiencyTrend: -2.8,
-        mortalityTrend: -10.5,
-        profitTrend: 12.3,
-      },
-      year: {
-        productionTrend: 5.2,
-        feedEfficiencyTrend: -5.5,
-        mortalityTrend: -8.2,
-        profitTrend: 18.7,
-      },
+  const calculateTrends = (production, sales, period) => {
+    // Split data into current and previous period
+    const midpoint = Math.floor(production.length / 2);
+    const previous = production.slice(0, midpoint);
+    const current = production.slice(midpoint);
+
+    const prevTotalEggs = previous.reduce(
+      (sum, p) =>
+        sum + (p.eggsSmall || 0) + (p.eggsMedium || 0) + (p.eggsLarge || 0),
+      0
+    );
+    const currTotalEggs = current.reduce(
+      (sum, p) =>
+        sum + (p.eggsSmall || 0) + (p.eggsMedium || 0) + (p.eggsLarge || 0),
+      0
+    );
+
+    const productionTrend =
+      ((currTotalEggs - prevTotalEggs) / prevTotalEggs) * 100 || 0;
+
+    // Similar calculations for other trends
+    const prevRevenue = sales
+      .slice(0, Math.floor(sales.length / 2))
+      .reduce((sum, s) => sum + s.totalPrice, 0);
+    const currRevenue = sales
+      .slice(Math.floor(sales.length / 2))
+      .reduce((sum, s) => sum + s.totalPrice, 0);
+
+    const profitTrend = ((currRevenue - prevRevenue) / prevRevenue) * 100 || 0;
+
+    return {
+      productionTrend,
+      feedEfficiencyTrend: -2.5, // Mock for now
+      mortalityTrend: -10.0, // Mock for now
+      profitTrend,
     };
+  };
 
-    const mockAlerts = [
-      {
+  const generateAlerts = (performance, trends) => {
+    const alerts = [];
+
+    // Production alert
+    if (trends.productionTrend > 3) {
+      alerts.push({
         id: 1,
         type: "success",
         title: "Uitstekende Productie",
-        message: "Productie 5% boven gemiddelde deze periode",
+        message: `Productie ${trends.productionTrend.toFixed(
+          1
+        )}% boven vorige periode`,
         severity: "low",
-      },
-      {
+      });
+    }
+
+    // Feed conversion alert
+    if (performance.feedConversion > 2.5) {
+      alerts.push({
         id: 2,
         type: "warning",
-        title: "Voerconversie Afwijking",
-        message: "Voerconversie ratio licht gestegen t.o.v. vorige periode",
+        title: "Voerconversie Aandacht",
+        message: "Voerconversie ratio hoger dan optimaal (>2.5)",
         severity: "medium",
-      },
-      {
-        id: 3,
-        type: "info",
-        title: "Seizoenspatroon",
-        message: "Normale seizoensvariatie in eigewicht gedetecteerd",
-        severity: "low",
-      },
-    ];
+      });
+    }
 
-    setReportData({
-      production: mockProduction[period],
-      financial: mockFinancial[period],
-      performance: mockPerformance[period],
-      trends: mockTrends[period],
-      alerts: mockAlerts,
-    });
+    // Mortality alert
+    if (performance.mortality > 2.0) {
+      alerts.push({
+        id: 3,
+        type: "error",
+        title: "Verhoogde Uitval",
+        message: `Uitval percentage ${performance.mortality.toFixed(
+          1
+        )}% - Controleer gezondheid`,
+        severity: "high",
+      });
+    }
+
+    return alerts;
   };
 
   const exportReport = () => {
@@ -382,6 +457,8 @@ export default function ReportsScreen() {
   };
 
   const renderProductionChart = () => {
+    if (reportData.production.length === 0) return null;
+
     const maxValue = Math.max(...reportData.production.map((d) => d.eggs));
 
     return (
@@ -394,9 +471,7 @@ export default function ReportsScreen() {
             return (
               <View key={index} style={styles.barContainer}>
                 <View style={styles.barWrapper}>
-                  {/* Target line */}
                   <View style={[styles.targetLine, { bottom: targetHeight }]} />
-                  {/* Actual bar */}
                   <View
                     style={[
                       styles.bar,
@@ -425,7 +500,7 @@ export default function ReportsScreen() {
                     },
                   ]}
                 >
-                  {item.percentage}%
+                  {item.percentage.toFixed(1)}%
                 </Chip>
               </View>
             );
@@ -440,6 +515,9 @@ export default function ReportsScreen() {
       (sum, item) => sum + item.eggs,
       0
     );
+
+    if (totalEggs === 0) return null;
+
     const totalSmall = reportData.production.reduce(
       (sum, item) => sum + item.small,
       0
@@ -508,6 +586,15 @@ export default function ReportsScreen() {
       </View>
     );
   };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2E7D32" />
+        <Text style={styles.loadingText}>Rapporten laden...</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
@@ -596,7 +683,7 @@ export default function ReportsScreen() {
                 ]}
               >
                 {reportData.trends.productionTrend > 0 ? "+" : ""}
-                {reportData.trends.productionTrend}%
+                {reportData.trends.productionTrend.toFixed(1)}%
               </Text>
             </View>
 
@@ -622,7 +709,7 @@ export default function ReportsScreen() {
                 ]}
               >
                 {reportData.trends.feedEfficiencyTrend > 0 ? "+" : ""}
-                {reportData.trends.feedEfficiencyTrend}%
+                {reportData.trends.feedEfficiencyTrend.toFixed(1)}%
               </Text>
             </View>
 
@@ -648,7 +735,7 @@ export default function ReportsScreen() {
                 ]}
               >
                 {reportData.trends.mortalityTrend > 0 ? "+" : ""}
-                {reportData.trends.mortalityTrend}%
+                {reportData.trends.mortalityTrend.toFixed(1)}%
               </Text>
             </View>
 
@@ -666,7 +753,7 @@ export default function ReportsScreen() {
                 ]}
               >
                 {reportData.trends.profitTrend > 0 ? "+" : ""}
-                {reportData.trends.profitTrend}%
+                {reportData.trends.profitTrend.toFixed(1)}%
               </Text>
             </View>
           </View>
@@ -1657,5 +1744,15 @@ const styles = StyleSheet.create({
   },
   shareButton: {
     borderColor: "#2E7D32",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 8,
+    fontSize: 16,
+    color: "#666666",
   },
 });
