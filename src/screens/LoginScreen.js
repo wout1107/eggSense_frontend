@@ -16,22 +16,21 @@ import {
   Paragraph,
   Divider,
 } from "react-native-paper";
-import authService from "../services/authService";
 
 export default function LoginScreen({ onLogin, onRegister }) {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // Test credentials
   const testCredentials = {
-    email: "test@eggsense.nl",
+    username: "testuser",
     password: "demo123",
   };
 
   const handleLogin = async () => {
-    if (!email || !password) {
+    if (!username || !password) {
       Alert.alert("Fout", "Vul alle velden in");
       return;
     }
@@ -39,11 +38,8 @@ export default function LoginScreen({ onLogin, onRegister }) {
     setIsLoading(true);
 
     try {
-      // We gebruiken email als username voor de backend
-      await authService.login(email, password);
-
-      // Als login slaagt (geen error), roepen we de parent functie aan
-      onLogin();
+      // Delegate login to parent (App.js)
+      await onLogin(username, password);
     } catch (error) {
       console.error("Login error:", error);
       const errorMessage =
@@ -57,60 +53,41 @@ export default function LoginScreen({ onLogin, onRegister }) {
   };
 
   const fillTestCredentials = () => {
-    setEmail(testCredentials.email);
+    setUsername(testCredentials.username);
     setPassword(testCredentials.password);
   };
 
   const handleForgotPassword = () => {
     Alert.alert(
       "Wachtwoord Vergeten",
-      "Voer uw e-mailadres in om een wachtwoord reset link te ontvangen.",
-      [
-        {
-          text: "Annuleren",
-          style: "cancel",
-        },
-        {
-          text: "Verstuur Reset Link",
-          onPress: () => {
-            if (!email) {
-              Alert.alert(
-                "E-mail Vereist",
-                "Vul eerst uw e-mailadres in het e-mailveld hierboven."
-              );
-            } else {
-              Alert.alert(
-                "Reset Link Verstuurd",
-                `Een wachtwoord reset link is verstuurd naar ${email}. Controleer uw inbox.`
-              );
-            }
-          },
-        },
-      ]
+      "Neem contact op met de beheerder om uw wachtwoord te resetten.",
+      [{ text: "OK" }]
     );
   };
 
-  const handleRegister = () => {
-    Alert.alert(
-      "Account Aanmaken",
-      "Wilt u een nieuw EggSense account aanmaken?",
-      [
-        {
-          text: "Annuleren",
-          style: "cancel",
-        },
-        {
-          text: "Doorgaan",
-          onPress: () => {
-            // In a real app, navigate to registration screen
-            Alert.alert(
-              "Registratie",
-              "De registratie pagina wordt binnenkort beschikbaar. Voor nu kunt u de demo gebruiken met:\n\nE-mail: test@eggsense.nl\nWachtwoord: demo123"
-            );
-          },
-        },
-      ]
-    );
+  const handleRegister = async () => {
+    if (!username || !password) {
+      Alert.alert(
+        "Registratie",
+        "Vul een gebruikersnaam en wachtwoord in om een nieuw account aan te maken."
+      );
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Register with entered credentials and a dummy email
+      await onRegister(username, `${username}@example.com`, password);
+      // App.js will handle state update on success
+    } catch (error) {
+      console.error("Registration error:", error);
+      Alert.alert(
+        "Registratiefout",
+        "Er is een fout opgetreden tijdens het registreren. Probeer het opnieuw."
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -144,14 +121,12 @@ export default function LoginScreen({ onLogin, onRegister }) {
             </Paragraph>
 
             <TextInput
-              label="E-mailadres"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
+              label="Gebruikersnaam"
+              value={username}
+              onChangeText={setUsername}
               autoCapitalize="none"
-              autoComplete="email"
               style={styles.input}
-              left={<TextInput.Icon icon="email" />}
+              left={<TextInput.Icon icon="account" />}
             />
 
             <TextInput
@@ -215,7 +190,7 @@ export default function LoginScreen({ onLogin, onRegister }) {
                 Probeer de app met test credentials:
               </Text>
               <View style={styles.credentialsContainer}>
-                <Text style={styles.credentialText}>📧 test@eggsense.nl</Text>
+                <Text style={styles.credentialText}>👤 testuser</Text>
                 <Text style={styles.credentialText}>🔑 demo123</Text>
               </View>
               <Button

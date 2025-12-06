@@ -163,7 +163,8 @@ export default function DashboardScreen() {
       <View style={styles.chartContainer}>
         {dashboardData.weeklyProduction.map((item, index) => {
           const total = item.stal1 + item.stal2;
-          const height = (total / maxValue) * 80;
+          // FIX: Check if maxValue is > 0 to avoid division by zero (NaN)
+          const height = maxValue > 0 ? (total / maxValue) * 80 : 0;
           const isToday = index === new Date().getDay() - 1; // Adjust for Monday start
 
           return (
@@ -324,7 +325,12 @@ export default function DashboardScreen() {
               {currentFarm.totalChickens}
             </Text>
             <ProgressBar
-              progress={currentFarm.activeChickens / currentFarm.totalChickens}
+              // FIX: Check if totalChickens > 0 to avoid NaN (0/0)
+              progress={
+                currentFarm.totalChickens > 0
+                  ? currentFarm.activeChickens / currentFarm.totalChickens
+                  : 0
+              }
               color="#4CAF50"
               style={styles.progressBar}
             />

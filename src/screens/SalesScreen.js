@@ -84,6 +84,11 @@ export default function SalesScreen() {
     }
   };
 
+  // Add this function if missing
+  const onRefresh = React.useCallback(() => {
+    loadData();
+  }, []);
+
   useEffect(() => {
     loadData();
   }, []);

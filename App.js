@@ -4,7 +4,12 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createStackNavigator } from "@react-navigation/stack";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { PaperProvider } from "react-native-paper";
+import {
+  Provider as PaperProvider,
+  MD3LightTheme, // Import MD3LightTheme explicitly instead of DefaultTheme
+  // ...existing code...
+} from "react-native-paper";
+
 import {
   TouchableOpacity,
   Platform,
@@ -35,10 +40,18 @@ const Stack = createStackNavigator();
 
 // Theme configuration
 const theme = {
+  ...MD3LightTheme, // Extend MD3LightTheme
   colors: {
-    primary: "#4CAF50",
-    accent: "#FFC107",
+    ...MD3LightTheme.colors, // CRITICAL: Preserves 'elevation' object required for Dialogs
+    primary: "#2E7D32",
+    secondary: "#FF9800",
+    tertiary: "#FF9800", // MD3 often requires tertiary
     background: "#f5f5f5",
+    surface: "#ffffff",
+    error: "#B00020",
+    onPrimary: "#ffffff",
+    onSecondary: "#000000",
+    onSurface: "#000000",
   },
 };
 
@@ -204,7 +217,7 @@ function MainTabs({ onLogout }) {
 }
 
 // Authentication Navigation
-function AuthNavigator({ onLogin }) {
+function AuthNavigator({ onLogin, onRegister }) {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Welcome">
@@ -216,7 +229,9 @@ function AuthNavigator({ onLogin }) {
         )}
       </Stack.Screen>
       <Stack.Screen name="Login">
-        {(props) => <LoginScreen {...props} onLogin={onLogin} />}
+        {(props) => (
+          <LoginScreen {...props} onLogin={onLogin} onRegister={onRegister} />
+        )}
       </Stack.Screen>
     </Stack.Navigator>
   );
@@ -265,6 +280,17 @@ export default function App() {
     }
   };
 
+  // Add this function
+  const handleRegister = async (username, email, password) => {
+    try {
+      await authService.register(username, email, password);
+      setIsLoggedIn(true);
+    } catch (error) {
+      console.error("Registration failed", error);
+      throw error;
+    }
+  };
+
   const handleLogout = async () => {
     await authService.logout();
     setIsLoggedIn(false);
@@ -290,7 +316,12 @@ export default function App() {
             <Stack.Navigator screenOptions={{ headerShown: false }}>
               {!isLoggedIn ? (
                 <Stack.Screen name="Auth">
-                  {() => <AuthNavigator onLogin={handleLogin} />}
+                  {() => (
+                    <AuthNavigator
+                      onLogin={handleLogin}
+                      onRegister={handleRegister}
+                    />
+                  )}
                 </Stack.Screen>
               ) : (
                 <Stack.Screen name="Main" component={MainTabs} />

@@ -1,7 +1,14 @@
 import api from "./api";
 
-export const customerService = {
+const customerService = {
   getAll: async (search) => {
+    const params = search ? { search } : {};
+    const response = await api.get("/customers", { params });
+    return response.data;
+  },
+
+  // Alias for listCustomers used in SalesScreen
+  listCustomers: async (search) => {
     const params = search ? { search } : {};
     const response = await api.get("/customers", { params });
     return response.data;
@@ -17,6 +24,12 @@ export const customerService = {
     return response.data;
   },
 
+  // Alias for createCustomer used in SalesScreen
+  createCustomer: async (customerData) => {
+    const response = await api.post("/customers", customerData);
+    return response.data;
+  },
+
   update: async (id, customerData) => {
     const response = await api.put(`/customers/${id}`, customerData);
     return response.data;
@@ -26,3 +39,6 @@ export const customerService = {
     await api.delete(`/customers/${id}`);
   },
 };
+
+export { customerService };
+export default customerService;

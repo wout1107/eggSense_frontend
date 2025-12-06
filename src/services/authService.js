@@ -3,8 +3,8 @@ import api, { setToken, removeToken } from "./api";
 export const authService = {
   login: async (username, password) => {
     const response = await api.post("/auth/login", { username, password });
-    if (response.data.accessToken) {
-      await setToken(response.data.accessToken);
+    if (response.data.token) {
+      await setToken(response.data.token);
     }
     return response.data;
   },
@@ -15,8 +15,8 @@ export const authService = {
       email,
       password,
     });
-    if (response.data.accessToken) {
-      await setToken(response.data.accessToken);
+    if (response.data.token) {
+      await setToken(response.data.token);
     }
     return response.data;
   },

@@ -30,8 +30,9 @@ export const removeToken = async () => {
 };
 
 // Base URL from environment or default
-const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_BASE || "http://localhost:8080/api";
+const API_BASE_URL = "http://192.168.0.202:8080/api";
+// const API_BASE_URL =
+//   process.env.EXPO_PUBLIC_API_BASE || "http://localhost:8080/api";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
