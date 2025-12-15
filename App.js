@@ -7,6 +7,10 @@ import { Provider as PaperProvider } from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { View, ActivityIndicator, Platform } from "react-native";
 
+// Context providers
+import { ThemeProvider, useTheme } from "./src/context/ThemeContext";
+import { SettingsProvider } from "./src/context/SettingsContext";
+
 // Import screens
 import WelcomeScreen from "./src/screens/WelcomeScreen";
 import LoginScreen from "./src/screens/LoginScreen";
@@ -28,6 +32,8 @@ const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
 function MainTabs() {
+  const { isDarkMode, colors } = useTheme();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -46,8 +52,12 @@ function MainTabs() {
 
           return <Icon name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: "#2E7D32",
-        tabBarInactiveTintColor: "gray",
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: isDarkMode ? "#888" : "gray",
+        tabBarStyle: {
+          backgroundColor: isDarkMode ? colors.surface : "#fff",
+          borderTopColor: isDarkMode ? "#333" : "#e0e0e0",
+        },
         headerShown: false,
       })}
     >
@@ -75,45 +85,24 @@ function MainTabs() {
   );
 }
 
-export default function App() {
+function AppContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { theme, isDarkMode, colors } = useTheme();
 
-  // Fix for web: override pointer-events: none dynamically
+  // Ensure proper root height on web
   useEffect(() => {
-    if (Platform.OS === "web") {
-      // Fix existing elements
-      const fixPointerEvents = () => {
-        document.querySelectorAll('*').forEach(el => {
-          const style = window.getComputedStyle(el);
-          if (style.pointerEvents === 'none') {
-            el.style.setProperty('pointer-events', 'auto', 'important');
-          }
-        });
-      };
-      
-      // Run fix immediately
-      fixPointerEvents();
-      
-      // Use MutationObserver to fix dynamically added elements
-      const observer = new MutationObserver(() => {
-        fixPointerEvents();
-      });
-      
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['style']
-      });
-      
-      // Also run on a short interval as backup
-      const interval = setInterval(fixPointerEvents, 100);
-      
-      return () => {
-        observer.disconnect();
-        clearInterval(interval);
-      };
+    if (Platform.OS === 'web') {
+      const style = document.createElement('style');
+      style.textContent = `
+        html, body, #root {
+          height: 100%;
+          width: 100%;
+          overflow: hidden; /* Let React Native manage scrolling */
+        }
+      `;
+      document.head.appendChild(style);
+      return () => document.head.removeChild(style);
     }
   }, []);
 
@@ -145,47 +134,77 @@ export default function App() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color="#2E7D32" />
+      <View style={{
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: isDarkMode ? colors.background : "#fff",
+        height: Platform.OS === 'web' ? '100vh' : '100%',
+      }}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <PaperProvider>
-      <NavigationContainer>
-        <Stack.Navigator
-          screenOptions={{
-            headerShown: false,
-            cardStyle: { backgroundColor: 'transparent', pointerEvents: 'auto' },
+    <PaperProvider theme={theme}>
+      <View style={{ flex: 1 }}>
+        <NavigationContainer
+          theme={{
+            dark: isDarkMode,
+            colors: {
+              primary: colors.primary,
+              background: colors.background,
+              card: colors.surface,
+              text: colors.onSurface,
+              border: isDarkMode ? '#333' : '#e0e0e0',
+              notification: colors.error,
+            },
           }}
         >
-          {!isAuthenticated ? (
-            // Auth Stack
-            <>
-              <Stack.Screen name="Welcome" component={WelcomeScreen} />
-              <Stack.Screen name="Login" component={LoginScreen} />
-            </>
-          ) : (
-            // Main App Stack
-            <>
-              <Stack.Screen name="MainTabs" component={MainTabs} />
-              <Stack.Screen name="Settings" component={SettingsScreen} />
-              <Stack.Screen name="DailyInput" component={DailyInputScreen} />
-              <Stack.Screen name="Reports" component={ReportScreen} />
-              <Stack.Screen
-                name="FeedDelivery"
-                component={FeedDeliveryScreen}
-              />
-              <Stack.Screen
-                name="CustomerDetail"
-                component={CustomerDetailScreen}
-              />
-              <Stack.Screen name="OrderDetail" component={OrderDetailScreen} />
-            </>
-          )}
-        </Stack.Navigator>
-      </NavigationContainer>
+          <Stack.Navigator
+            screenOptions={{
+              headerShown: false,
+              cardStyle: { backgroundColor: 'transparent' },
+            }}
+          >
+            {!isAuthenticated ? (
+              // Auth Stack
+              <>
+                <Stack.Screen name="Welcome" component={WelcomeScreen} />
+                <Stack.Screen name="Login" component={LoginScreen} />
+              </>
+            ) : (
+              // Main App Stack
+              <>
+                <Stack.Screen name="MainTabs" component={MainTabs} />
+                <Stack.Screen name="Settings" component={SettingsScreen} />
+                <Stack.Screen name="DailyInput" component={DailyInputScreen} />
+                <Stack.Screen name="Reports" component={ReportScreen} />
+                <Stack.Screen
+                  name="FeedDelivery"
+                  component={FeedDeliveryScreen}
+                />
+                <Stack.Screen
+                  name="CustomerDetail"
+                  component={CustomerDetailScreen}
+                />
+                <Stack.Screen name="OrderDetail" component={OrderDetailScreen} />
+              </>
+            )}
+          </Stack.Navigator>
+        </NavigationContainer>
+      </View>
     </PaperProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <SettingsProvider>
+        <AppContent />
+      </SettingsProvider>
+    </ThemeProvider>
   );
 }

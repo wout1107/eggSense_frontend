@@ -24,8 +24,13 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import stallService from "../services/stallService";
 import authService from "../services/authService";
+import { useTheme } from "../context/ThemeContext";
+import { useSettings } from "../context/SettingsContext";
 
 export default function SettingsScreen({ navigation }) {
+  const { isDarkMode, toggleTheme, colors } = useTheme();
+  const { settings, updateSetting } = useSettings();
+
   const [selectedCategory, setSelectedCategory] = useState("stalls");
   const [loading, setLoading] = useState(true);
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
@@ -131,11 +136,9 @@ export default function SettingsScreen({ navigation }) {
       };
 
       if (selectedStall) {
-        // Editing existing stall - don't send initialChickenCount
         await stallService.updateStall(selectedStall.id, stallData);
         Alert.alert("Succes", "Stal succesvol bijgewerkt");
       } else {
-        // Creating new stall - include initialChickenCount
         stallData.initialChickenCount = parseInt(
           editedStall.initialChickenCount || editedStall.capacity
         );
@@ -208,25 +211,62 @@ export default function SettingsScreen({ navigation }) {
     ]);
   };
 
+  // Dynamic styles based on theme
+  const dynamicStyles = {
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      padding: 16,
+      backgroundColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: isDarkMode ? "#333" : "#e0e0e0",
+    },
+    headerTitle: {
+      fontSize: 24,
+      fontWeight: "bold",
+      color: colors.primary,
+    },
+    card: {
+      marginBottom: 16,
+      elevation: 2,
+      backgroundColor: colors.surface,
+    },
+    cardTitle: {
+      color: colors.primary,
+      fontSize: 18,
+    },
+    text: {
+      color: colors.onSurface,
+    },
+    subText: {
+      color: isDarkMode ? "#aaa" : "#666",
+    },
+  };
+
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2E7D32" />
-        <Text style={styles.loadingText}>Laden...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.onSurface }]}>Laden...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <View style={dynamicStyles.container}>
+      <View style={dynamicStyles.header}>
         <IconButton
           icon="arrow-left"
           size={24}
           onPress={() => navigation.goBack()}
-          iconColor="#2E7D32"
+          iconColor={colors.primary}
         />
-        <Text style={styles.headerTitle}>Instellingen</Text>
+        <Text style={dynamicStyles.headerTitle}>Instellingen</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -245,10 +285,10 @@ export default function SettingsScreen({ navigation }) {
 
         {/* Stalls Management */}
         {selectedCategory === "stalls" && (
-          <Card style={styles.card}>
+          <Card style={dynamicStyles.card}>
             <Card.Content>
               <View style={styles.cardHeader}>
-                <Title style={styles.cardTitle}>
+                <Title style={dynamicStyles.cardTitle}>
                   Stallen ({stalls.length})
                 </Title>
                 <Button
@@ -263,8 +303,8 @@ export default function SettingsScreen({ navigation }) {
 
               {stalls.length === 0 ? (
                 <View style={styles.emptyState}>
-                  <Text style={styles.emptyText}>Geen stallen gevonden</Text>
-                  <Text style={styles.emptySubtext}>
+                  <Text style={[styles.emptyText, dynamicStyles.subText]}>Geen stallen gevonden</Text>
+                  <Text style={[styles.emptySubtext, dynamicStyles.subText]}>
                     Voeg een stal toe om te beginnen
                   </Text>
                 </View>
@@ -274,22 +314,22 @@ export default function SettingsScreen({ navigation }) {
                     <View key={stall.id} style={styles.stallItem}>
                       <View style={styles.stallHeader}>
                         <View style={styles.stallInfo}>
-                          <Text style={styles.stallName}>{stall.name}</Text>
-                          <Text style={styles.stallDetails}>
+                          <Text style={[styles.stallName, { color: colors.primary }]}>{stall.name}</Text>
+                          <Text style={[styles.stallDetails, dynamicStyles.subText]}>
                             Capaciteit: {stall.capacity} kippen
                           </Text>
                           {stall.notes && (
-                            <Text style={styles.stallNotes}>{stall.notes}</Text>
+                            <Text style={[styles.stallNotes, dynamicStyles.subText]}>{stall.notes}</Text>
                           )}
                         </View>
                         <View style={styles.stallActions}>
-                          <Text style={styles.stallStatusLabel}>
+                          <Text style={[styles.stallStatusLabel, dynamicStyles.subText]}>
                             {stall.active ? "Actief" : "Inactief"}
                           </Text>
                           <Switch
                             value={stall.active}
                             onValueChange={() => toggleStallActive(stall)}
-                            thumbColor={stall.active ? "#2E7D32" : "#f4f3f4"}
+                            thumbColor={stall.active ? colors.primary : "#f4f3f4"}
                           />
                         </View>
                       </View>
@@ -338,25 +378,120 @@ export default function SettingsScreen({ navigation }) {
         {/* App Settings */}
         {selectedCategory === "app" && (
           <>
-            <Card style={styles.card}>
+            {/* IMPORTANT: Theme & Preferences Card - Exam Requirement */}
+            <Card style={dynamicStyles.card}>
               <Card.Content>
-                <Title style={styles.cardTitle}>App Informatie</Title>
+                <Title style={dynamicStyles.cardTitle}>Weergave & Voorkeuren</Title>
+
+                {/* Toggle 1: Dark/Light Theme */}
+                <View style={styles.settingRow}>
+                  <View style={styles.settingInfo}>
+                    <List.Icon icon={isDarkMode ? "weather-night" : "weather-sunny"} color={colors.primary} />
+                    <View style={styles.settingText}>
+                      <Text style={[styles.settingTitle, dynamicStyles.text]}>Donker Thema</Text>
+                      <Text style={[styles.settingDescription, dynamicStyles.subText]}>
+                        Schakel tussen licht en donker thema
+                      </Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={isDarkMode}
+                    onValueChange={toggleTheme}
+                    thumbColor={isDarkMode ? colors.primary : "#f4f3f4"}
+                    trackColor={{ false: "#e0e0e0", true: colors.primaryContainer }}
+                  />
+                </View>
+
+                <Divider style={styles.settingDivider} />
+
+                {/* Toggle 2: Low Stock Notifications */}
+                <View style={styles.settingRow}>
+                  <View style={styles.settingInfo}>
+                    <List.Icon icon="bell-alert" color={colors.primary} />
+                    <View style={styles.settingText}>
+                      <Text style={[styles.settingTitle, dynamicStyles.text]}>Voorraad Meldingen</Text>
+                      <Text style={[styles.settingDescription, dynamicStyles.subText]}>
+                        Ontvang meldingen bij lage voervoorraad
+                      </Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={settings.lowStockAlerts}
+                    onValueChange={(value) => updateSetting('lowStockAlerts', value)}
+                    thumbColor={settings.lowStockAlerts ? colors.primary : "#f4f3f4"}
+                    trackColor={{ false: "#e0e0e0", true: colors.primaryContainer }}
+                  />
+                </View>
+
+                <Divider style={styles.settingDivider} />
+
+                {/* Toggle 3: Data Saver Mode (WiFi Only Images) */}
+                <View style={styles.settingRow}>
+                  <View style={styles.settingInfo}>
+                    <List.Icon icon="wifi" color={colors.primary} />
+                    <View style={styles.settingText}>
+                      <Text style={[styles.settingTitle, dynamicStyles.text]}>Databesparing</Text>
+                      <Text style={[styles.settingDescription, dynamicStyles.subText]}>
+                        Afbeeldingen alleen via WiFi laden
+                      </Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={settings.wifiOnlyImages}
+                    onValueChange={(value) => updateSetting('wifiOnlyImages', value)}
+                    thumbColor={settings.wifiOnlyImages ? colors.primary : "#f4f3f4"}
+                    trackColor={{ false: "#e0e0e0", true: colors.primaryContainer }}
+                  />
+                </View>
+
+                <Divider style={styles.settingDivider} />
+
+                {/* Toggle 4: Notifications Enabled */}
+                <View style={styles.settingRow}>
+                  <View style={styles.settingInfo}>
+                    <List.Icon icon="bell-outline" color={colors.primary} />
+                    <View style={styles.settingText}>
+                      <Text style={[styles.settingTitle, dynamicStyles.text]}>Push Notificaties</Text>
+                      <Text style={[styles.settingDescription, dynamicStyles.subText]}>
+                        Ontvang push notificaties
+                      </Text>
+                    </View>
+                  </View>
+                  <Switch
+                    value={settings.notificationsEnabled}
+                    onValueChange={(value) => updateSetting('notificationsEnabled', value)}
+                    thumbColor={settings.notificationsEnabled ? colors.primary : "#f4f3f4"}
+                    trackColor={{ false: "#e0e0e0", true: colors.primaryContainer }}
+                  />
+                </View>
+              </Card.Content>
+            </Card>
+
+            <Card style={dynamicStyles.card}>
+              <Card.Content>
+                <Title style={dynamicStyles.cardTitle}>App Informatie</Title>
                 <List.Item
                   title="Versie"
                   description="1.0.0"
-                  left={(props) => <List.Icon {...props} icon="information" />}
+                  titleStyle={dynamicStyles.text}
+                  descriptionStyle={dynamicStyles.subText}
+                  left={(props) => <List.Icon {...props} icon="information" color={colors.primary} />}
                 />
                 <Divider />
                 <List.Item
                   title="Ontwikkelaar"
                   description="EggSense Solutions"
-                  left={(props) => <List.Icon {...props} icon="code-tags" />}
+                  titleStyle={dynamicStyles.text}
+                  descriptionStyle={dynamicStyles.subText}
+                  left={(props) => <List.Icon {...props} icon="code-tags" color={colors.primary} />}
                 />
                 <Divider />
                 <List.Item
                   title="Support"
                   description="support@eggsense.com"
-                  left={(props) => <List.Icon {...props} icon="email" />}
+                  titleStyle={dynamicStyles.text}
+                  descriptionStyle={dynamicStyles.subText}
+                  left={(props) => <List.Icon {...props} icon="email" color={colors.primary} />}
                   onPress={() =>
                     Alert.alert(
                       "Support",
@@ -367,10 +502,10 @@ export default function SettingsScreen({ navigation }) {
               </Card.Content>
             </Card>
 
-            <Card style={styles.card}>
+            <Card style={dynamicStyles.card}>
               <Card.Content>
-                <Title style={styles.cardTitle}>Over EggSense</Title>
-                <Text style={styles.aboutText}>
+                <Title style={dynamicStyles.cardTitle}>Over EggSense</Title>
+                <Text style={[styles.aboutText, dynamicStyles.subText]}>
                   EggSense is een professioneel management systeem voor
                   pluimveebedrijven. Het helpt u bij het bijhouden van
                   productie, verkoop en voorraden.
@@ -378,7 +513,8 @@ export default function SettingsScreen({ navigation }) {
                 <Divider style={styles.divider} />
                 <List.Item
                   title="Privacy Beleid"
-                  left={(props) => <List.Icon {...props} icon="shield-lock" />}
+                  titleStyle={dynamicStyles.text}
+                  left={(props) => <List.Icon {...props} icon="shield-lock" color={colors.primary} />}
                   right={(props) => (
                     <List.Icon {...props} icon="chevron-right" />
                   )}
@@ -392,8 +528,9 @@ export default function SettingsScreen({ navigation }) {
                 <Divider />
                 <List.Item
                   title="Algemene Voorwaarden"
+                  titleStyle={dynamicStyles.text}
                   left={(props) => (
-                    <List.Icon {...props} icon="file-document" />
+                    <List.Icon {...props} icon="file-document" color={colors.primary} />
                   )}
                   right={(props) => (
                     <List.Icon {...props} icon="chevron-right" />
@@ -413,30 +550,34 @@ export default function SettingsScreen({ navigation }) {
         {/* Account Settings */}
         {selectedCategory === "account" && (
           <>
-            <Card style={styles.card}>
+            <Card style={dynamicStyles.card}>
               <Card.Content>
-                <Title style={styles.cardTitle}>Account Informatie</Title>
-                <View style={styles.accountInfo}>
+                <Title style={dynamicStyles.cardTitle}>Account Informatie</Title>
+                <View style={[styles.accountInfo, { backgroundColor: isDarkMode ? colors.surfaceVariant : "#f8f9fa" }]}>
                   <List.Item
                     title="Gebruikersnaam"
                     description={user?.username || "Niet beschikbaar"}
-                    left={(props) => <List.Icon {...props} icon="account" />}
+                    titleStyle={dynamicStyles.text}
+                    descriptionStyle={dynamicStyles.subText}
+                    left={(props) => <List.Icon {...props} icon="account" color={colors.primary} />}
                   />
                   <Divider />
                   <List.Item
                     title="Rol"
                     description={user?.role || "Gebruiker"}
+                    titleStyle={dynamicStyles.text}
+                    descriptionStyle={dynamicStyles.subText}
                     left={(props) => (
-                      <List.Icon {...props} icon="shield-account" />
+                      <List.Icon {...props} icon="shield-account" color={colors.primary} />
                     )}
                   />
                 </View>
               </Card.Content>
             </Card>
 
-            <Card style={styles.card}>
+            <Card style={dynamicStyles.card}>
               <Card.Content>
-                <Title style={styles.cardTitle}>Account Acties</Title>
+                <Title style={dynamicStyles.cardTitle}>Account Acties</Title>
                 <Button
                   mode="contained"
                   onPress={handleLogout}
@@ -521,7 +662,6 @@ export default function SettingsScreen({ navigation }) {
 
               {selectedStall && (
                 <View style={styles.infoBox}>
-                  <Icon name="information" size={20} color="#2196F3" />
                   <Text style={styles.infoText}>
                     Huidige bezetting: {selectedStall.currentChickenCount || 0}{" "}
                     kippen
@@ -549,7 +689,7 @@ export default function SettingsScreen({ navigation }) {
                   onValueChange={(value) =>
                     setEditedStall({ ...editedStall, active: value })
                   }
-                  thumbColor={editedStall.active ? "#2E7D32" : "#f4f3f4"}
+                  thumbColor={editedStall.active ? colors.primary : "#f4f3f4"}
                 />
               </View>
             </ScrollView>
@@ -594,10 +734,6 @@ export default function SettingsScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f5f5f5",
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
@@ -606,21 +742,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: "#666",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 16,
-    backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#2E7D32",
   },
   content: {
     flex: 1,
@@ -629,19 +750,11 @@ const styles = StyleSheet.create({
   categorySelector: {
     marginBottom: 16,
   },
-  card: {
-    marginBottom: 16,
-    elevation: 2,
-  },
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 12,
-  },
-  cardTitle: {
-    color: "#2E7D32",
-    fontSize: 18,
   },
   emptyState: {
     alignItems: "center",
@@ -649,12 +762,10 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: "#999",
     marginBottom: 4,
   },
   emptySubtext: {
     fontSize: 14,
-    color: "#bbb",
   },
   stallItem: {
     marginBottom: 16,
@@ -671,17 +782,14 @@ const styles = StyleSheet.create({
   stallName: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#2E7D32",
     marginBottom: 4,
   },
   stallDetails: {
     fontSize: 13,
-    color: "#666",
     marginBottom: 2,
   },
   stallNotes: {
     fontSize: 12,
-    color: "#999",
     fontStyle: "italic",
   },
   stallActions: {
@@ -689,7 +797,6 @@ const styles = StyleSheet.create({
   },
   stallStatusLabel: {
     fontSize: 12,
-    color: "#666",
     marginBottom: 4,
   },
   stallButtons: {
@@ -708,9 +815,35 @@ const styles = StyleSheet.create({
   stallDivider: {
     marginTop: 8,
   },
+  // Settings row styles
+  settingRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 12,
+  },
+  settingInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  settingText: {
+    flex: 1,
+    marginLeft: -8,
+  },
+  settingTitle: {
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  settingDescription: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  settingDivider: {
+    marginVertical: 4,
+  },
   aboutText: {
     fontSize: 14,
-    color: "#666",
     lineHeight: 20,
     marginBottom: 16,
   },
@@ -718,7 +851,6 @@ const styles = StyleSheet.create({
     marginVertical: 12,
   },
   accountInfo: {
-    backgroundColor: "#f8f9fa",
     borderRadius: 8,
   },
   logoutButton: {

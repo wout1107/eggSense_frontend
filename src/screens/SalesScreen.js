@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
   StyleSheet,
-  FlatList,
+  SectionList,
   RefreshControl,
   Alert,
   ScrollView,
@@ -23,8 +23,11 @@ import {
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import salesService from "../services/salesService";
 import customerService from "../services/customerService";
+import { useTheme } from "../context/ThemeContext";
 
 export default function SalesScreen({ navigation }) {
+  const { isDarkMode, colors } = useTheme();
+
   const [sales, setSales] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [filteredSales, setFilteredSales] = useState([]);
@@ -55,14 +58,12 @@ export default function SalesScreen({ navigation }) {
   const loadData = useCallback(async () => {
     try {
       setRefreshing(true);
-      // Load sales from last 30 days
       const salesData = await salesService.listOrders({
         status: statusFilter === "all" ? undefined : statusFilter,
       });
       setSales(salesData);
       setFilteredSales(salesData);
 
-      // Load customers for dropdown
       const customersData = await customerService.listCustomers();
       setCustomers(customersData);
     } catch (error) {
@@ -78,7 +79,6 @@ export default function SalesScreen({ navigation }) {
   }, [loadData]);
 
   useEffect(() => {
-    // Filter sales based on search query
     if (searchQuery.trim() === "") {
       setFilteredSales(sales);
     } else {
@@ -92,6 +92,36 @@ export default function SalesScreen({ navigation }) {
       setFilteredSales(filtered);
     }
   }, [searchQuery, sales, customers]);
+
+  // Group sales by status for SectionList (EXAM REQUIREMENT)
+  const sectionedSales = useMemo(() => {
+    const statusOrder = ['PENDING', 'CONFIRMED', 'DELIVERED', 'CANCELLED'];
+    const statusLabels = {
+      'PENDING': '🟠 In Behandeling',
+      'CONFIRMED': '🔵 Bevestigd',
+      'DELIVERED': '🟢 Geleverd',
+      'CANCELLED': '🔴 Geannuleerd',
+    };
+
+    const grouped = filteredSales.reduce((acc, sale) => {
+      const status = sale.status || 'PENDING';
+      if (!acc[status]) {
+        acc[status] = [];
+      }
+      acc[status].push(sale);
+      return acc;
+    }, {});
+
+    return statusOrder
+      .filter(status => grouped[status] && grouped[status].length > 0)
+      .map(status => ({
+        title: statusLabels[status] || status,
+        status: status,
+        data: grouped[status].sort((a, b) =>
+          new Date(b.saleTime) - new Date(a.saleTime)
+        ),
+      }));
+  }, [filteredSales]);
 
   const onRefresh = useCallback(() => {
     loadData();
@@ -112,7 +142,6 @@ export default function SalesScreen({ navigation }) {
         notes: newCustomer.notes,
       });
 
-      // Reload customers and select the newly created one
       const customersData = await customerService.listCustomers();
       setCustomers(customersData);
       setNewSale({ ...newSale, customerId: createdCustomer.id });
@@ -218,6 +247,22 @@ export default function SalesScreen({ navigation }) {
     }
   };
 
+  // Section header renderer for SectionList
+  const renderSectionHeader = ({ section }) => (
+    <View style={[styles.sectionHeader, { backgroundColor: isDarkMode ? colors.surfaceVariant : '#f0f0f0' }]}>
+      <Text style={[styles.sectionTitle, { color: colors.onSurface }]}>
+        {section.title}
+      </Text>
+      <Chip
+        mode="flat"
+        style={[styles.countChip, { backgroundColor: getStatusColor(section.status) }]}
+        textStyle={styles.countChipText}
+      >
+        {section.data.length}
+      </Chip>
+    </View>
+  );
+
   const renderSaleItem = ({ item }) => {
     const customer = customers.find((c) => c.id === item.customerId);
     const totalEggs =
@@ -225,14 +270,14 @@ export default function SalesScreen({ navigation }) {
 
     return (
       <Card
-        style={styles.saleCard}
+        style={[styles.saleCard, { backgroundColor: colors.surface }]}
         onPress={() => navigation.navigate("OrderDetail", { orderId: item.id })}
       >
         <Card.Content>
           <View style={styles.saleHeader}>
             <View style={styles.saleInfo}>
               <Text
-                style={styles.customerName}
+                style={[styles.customerName, { color: colors.onSurface }]}
                 onPress={() =>
                   customer &&
                   navigation.navigate("CustomerDetail", {
@@ -242,7 +287,7 @@ export default function SalesScreen({ navigation }) {
               >
                 {customer?.name || "Onbekende klant"}
               </Text>
-              <Text style={styles.saleDate}>
+              <Text style={[styles.saleDate, { color: isDarkMode ? '#aaa' : '#666' }]}>
                 {new Date(item.saleTime).toLocaleDateString("nl-NL", {
                   day: "2-digit",
                   month: "short",
@@ -266,27 +311,27 @@ export default function SalesScreen({ navigation }) {
           <View style={styles.eggBreakdown}>
             {item.eggsSmall > 0 && (
               <View style={styles.eggItem}>
-                <Icon name="egg" size={16} color="#666" />
-                <Text style={styles.eggText}>S: {item.eggsSmall}</Text>
+                <Icon name="egg" size={16} color={isDarkMode ? '#aaa' : '#666'} />
+                <Text style={[styles.eggText, { color: isDarkMode ? '#aaa' : '#666' }]}>S: {item.eggsSmall}</Text>
               </View>
             )}
             {item.eggsMedium > 0 && (
               <View style={styles.eggItem}>
-                <Icon name="egg" size={18} color="#666" />
-                <Text style={styles.eggText}>M: {item.eggsMedium}</Text>
+                <Icon name="egg" size={18} color={isDarkMode ? '#aaa' : '#666'} />
+                <Text style={[styles.eggText, { color: isDarkMode ? '#aaa' : '#666' }]}>M: {item.eggsMedium}</Text>
               </View>
             )}
             {item.eggsLarge > 0 && (
               <View style={styles.eggItem}>
-                <Icon name="egg" size={20} color="#666" />
-                <Text style={styles.eggText}>L: {item.eggsLarge}</Text>
+                <Icon name="egg" size={20} color={isDarkMode ? '#aaa' : '#666'} />
+                <Text style={[styles.eggText, { color: isDarkMode ? '#aaa' : '#666' }]}>L: {item.eggsLarge}</Text>
               </View>
             )}
           </View>
 
-          <View style={styles.saleFooter}>
-            <Text style={styles.totalEggs}>Totaal: {totalEggs} eieren</Text>
-            <Text style={styles.totalPrice}>€{item.totalPrice.toFixed(2)}</Text>
+          <View style={[styles.saleFooter, { borderTopColor: isDarkMode ? '#333' : '#e0e0e0' }]}>
+            <Text style={[styles.totalEggs, { color: isDarkMode ? '#aaa' : '#666' }]}>Totaal: {totalEggs} eieren</Text>
+            <Text style={[styles.totalPrice, { color: colors.primary }]}>€{item.totalPrice.toFixed(2)}</Text>
           </View>
 
           {item.status === "PENDING" && (
@@ -326,14 +371,17 @@ export default function SalesScreen({ navigation }) {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Verkoop</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: isDarkMode ? '#333' : '#e0e0e0' }]}>
+        <Text style={[styles.title, { color: colors.primary }]}>Verkoop</Text>
         <Searchbar
           placeholder="Zoek op klant of order #"
           onChangeText={setSearchQuery}
           value={searchQuery}
-          style={styles.searchBar}
+          style={[styles.searchBar, { backgroundColor: isDarkMode ? colors.surfaceVariant : '#f5f5f5' }]}
+          iconColor={colors.primary}
+          inputStyle={{ color: colors.onSurface }}
+          placeholderTextColor={isDarkMode ? '#888' : '#999'}
         />
         <SegmentedButtons
           value={statusFilter}
@@ -348,27 +396,40 @@ export default function SalesScreen({ navigation }) {
         />
       </View>
 
-      <FlatList
-        data={filteredSales}
+      {/* SECTIONLIST - EXAM REQUIREMENT */}
+      <SectionList
+        sections={sectionedSales}
         renderItem={renderSaleItem}
+        renderSectionHeader={renderSectionHeader}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContainer}
+        stickySectionHeadersEnabled={true}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Icon name="cart-off" size={64} color="#ccc" />
-            <Text style={styles.emptyText}>Geen verkopen gevonden</Text>
+            <Icon name="cart-off" size={64} color={isDarkMode ? '#555' : '#ccc'} />
+            <Text style={[styles.emptyText, { color: isDarkMode ? '#888' : '#999' }]}>
+              Geen verkopen gevonden
+            </Text>
+            <Text style={[styles.emptySubtext, { color: isDarkMode ? '#666' : '#bbb' }]}>
+              Gegroepeerd op status
+            </Text>
           </View>
         }
       />
 
       <FAB
         icon="plus"
-        style={styles.fab}
+        style={[styles.fab, { backgroundColor: colors.primary }]}
         onPress={() => setShowDialog(true)}
         label="Nieuwe Verkoop"
+        color="#fff"
       />
 
       {/* Main Sale Dialog */}
@@ -568,30 +629,49 @@ export default function SalesScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
   },
   header: {
     padding: 16,
-    backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
   },
   title: {
     fontSize: 24,
     fontWeight: "bold",
-    color: "#2E7D32",
     marginBottom: 12,
   },
   searchBar: {
     marginBottom: 12,
     elevation: 0,
-    backgroundColor: "#f5f5f5",
   },
   filterButtons: {
     marginTop: 8,
   },
   listContainer: {
     padding: 16,
+    paddingBottom: 100,
+  },
+  // Section header styles for SectionList
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 8,
+    borderRadius: 8,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  countChip: {
+    height: 28,
+  },
+  countChipText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 12,
   },
   saleCard: {
     marginBottom: 12,
@@ -609,12 +689,10 @@ const styles = StyleSheet.create({
   customerName: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#333",
     marginBottom: 4,
   },
   saleDate: {
     fontSize: 14,
-    color: "#666",
   },
   statusChip: {
     marginLeft: 8,
@@ -635,7 +713,6 @@ const styles = StyleSheet.create({
   },
   eggText: {
     fontSize: 14,
-    color: "#666",
   },
   saleFooter: {
     flexDirection: "row",
@@ -643,16 +720,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "#e0e0e0",
   },
   totalEggs: {
     fontSize: 14,
-    color: "#666",
   },
   totalPrice: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#2E7D32",
   },
   actionButtons: {
     flexDirection: "row",
@@ -675,14 +749,16 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: "#999",
     marginTop: 16,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    marginTop: 4,
   },
   fab: {
     position: "absolute",
     right: 16,
     bottom: 16,
-    backgroundColor: "#2E7D32",
   },
   dialog: {
     maxHeight: "90%",
