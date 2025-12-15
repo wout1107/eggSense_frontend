@@ -5,7 +5,7 @@ import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Provider as PaperProvider } from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
-import { View, ActivityIndicator } from "react-native";
+import { View, ActivityIndicator, Platform } from "react-native";
 
 // Import screens
 import WelcomeScreen from "./src/screens/WelcomeScreen";
@@ -79,6 +79,44 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // Fix for web: override pointer-events: none dynamically
+  useEffect(() => {
+    if (Platform.OS === "web") {
+      // Fix existing elements
+      const fixPointerEvents = () => {
+        document.querySelectorAll('*').forEach(el => {
+          const style = window.getComputedStyle(el);
+          if (style.pointerEvents === 'none') {
+            el.style.setProperty('pointer-events', 'auto', 'important');
+          }
+        });
+      };
+      
+      // Run fix immediately
+      fixPointerEvents();
+      
+      // Use MutationObserver to fix dynamically added elements
+      const observer = new MutationObserver(() => {
+        fixPointerEvents();
+      });
+      
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['style']
+      });
+      
+      // Also run on a short interval as backup
+      const interval = setInterval(fixPointerEvents, 100);
+      
+      return () => {
+        observer.disconnect();
+        clearInterval(interval);
+      };
+    }
+  }, []);
+
   useEffect(() => {
     checkAuthentication();
 
@@ -119,6 +157,7 @@ export default function App() {
         <Stack.Navigator
           screenOptions={{
             headerShown: false,
+            cardStyle: { backgroundColor: 'transparent', pointerEvents: 'auto' },
           }}
         >
           {!isAuthenticated ? (

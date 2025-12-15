@@ -6,8 +6,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
-import { TextInput, Button, Card } from "react-native-paper";
+import { TextInput, Card } from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import authService from "../services/authService";
 
@@ -87,17 +89,18 @@ export default function LoginScreen({ navigation }) {
               }
             />
 
-            <Button
-              mode="contained"
+            <TouchableOpacity
               onPress={handleLogin}
-              loading={loading}
               disabled={loading}
-              style={styles.loginButton}
-              buttonColor="#2E7D32"
-              contentStyle={styles.buttonContent}
+              style={[styles.loginButton, loading && styles.loginButtonDisabled]}
+              activeOpacity={0.8}
             >
-              Inloggen
-            </Button>
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.loginButtonText}>Inloggen</Text>
+              )}
+            </TouchableOpacity>
           </Card.Content>
         </Card>
 
@@ -115,11 +118,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f5f5f5",
+    pointerEvents: "auto",
   },
   content: {
     flex: 1,
     justifyContent: "center",
     padding: 20,
+    pointerEvents: "auto",
   },
   logoContainer: {
     alignItems: "center",
@@ -166,9 +171,19 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     marginTop: 8,
+    backgroundColor: "#2E7D32",
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  buttonContent: {
-    paddingVertical: 8,
+  loginButtonDisabled: {
+    backgroundColor: "#a5d6a7",
+  },
+  loginButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
   },
   footer: {
     marginTop: 32,

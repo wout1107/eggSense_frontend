@@ -6,8 +6,10 @@ import {
   ScrollView,
   Image,
   Dimensions,
+  TouchableOpacity,
 } from "react-native";
-import { Button, Card, Title, Paragraph, IconButton } from "react-native-paper";
+import { Card, Title, Paragraph, IconButton } from "react-native-paper";
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
 const { width, height } = Dimensions.get("window");
 
@@ -42,8 +44,8 @@ export default function WelcomeScreen({ navigation }) {
   ];
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Hero Section */}
+    <View style={styles.wrapper}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <View style={styles.heroSection}>
         <View style={styles.logoContainer}>
           <View style={styles.logoIcon}>
@@ -180,16 +182,16 @@ export default function WelcomeScreen({ navigation }) {
         <Paragraph style={styles.ctaDescription}>
           Probeer EggSense nu gratis en ervaar het verschil
         </Paragraph>
-        <Button
-          mode="contained"
+        <TouchableOpacity
           onPress={() => navigation.navigate("Login")}
           style={styles.ctaButton}
-          buttonColor="#2E7D32"
-          contentStyle={styles.ctaButtonContent}
-          icon="arrow-right"
+          activeOpacity={0.8}
         >
-          Start Nu
-        </Button>
+          <View style={styles.ctaButtonInner}>
+            <Text style={styles.ctaButtonText}>Start Nu</Text>
+            <Icon name="arrow-right" size={20} color="#fff" />
+          </View>
+        </TouchableOpacity>
         <Text style={styles.ctaSubtext}>
           Geen creditcard vereist • 30 dagen gratis proberen
         </Text>
@@ -210,13 +212,22 @@ export default function WelcomeScreen({ navigation }) {
         </View>
       </View>
     </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  wrapper: {
+    flex: 1,
+    pointerEvents: "auto",
+  },
   container: {
     flex: 1,
     backgroundColor: "#f5f7fa",
+    pointerEvents: "auto",
+  },
+  contentContainer: {
+    pointerEvents: "auto",
   },
   heroSection: {
     paddingTop: 60,
@@ -415,10 +426,25 @@ const styles = StyleSheet.create({
   ctaButton: {
     width: width - 80,
     borderRadius: 12,
+    backgroundColor: "#2E7D32",
     elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
-  ctaButtonContent: {
-    paddingVertical: 12,
+  ctaButtonInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+  },
+  ctaButtonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
+    marginRight: 8,
   },
   ctaSubtext: {
     marginTop: 16,
