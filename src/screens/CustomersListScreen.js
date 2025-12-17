@@ -7,23 +7,25 @@ import {
     RefreshControl,
     TouchableOpacity,
     Alert,
+    ActivityIndicator, // Moved from react-native-paper
 } from "react-native";
 import {
     Card,
-    Button,
+    Searchbar, // Reordered
+    Chip, // Reordered
     FAB,
     Dialog,
     Portal,
     TextInput,
-    Searchbar,
-    ActivityIndicator,
-    Chip,
+    Button, // Reordered
 } from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import { useSafeAreaInsets } from "react-native-safe-area-context"; // Added import
 import customerService from "../services/customerService";
 import { useTheme } from "../context/ThemeContext";
 
 export default function CustomersListScreen({ navigation }) {
+    const insets = useSafeAreaInsets(); // Added
     const { isDarkMode, colors } = useTheme();
     const [customers, setCustomers] = useState([]);
     const [filteredCustomers, setFilteredCustomers] = useState([]);
@@ -140,16 +142,20 @@ export default function CustomersListScreen({ navigation }) {
     const styles = StyleSheet.create({
         container: {
             flex: 1,
-            backgroundColor: colors.background,
+            // backgroundColor: colors.background, // Removed as it's now inline
         },
         header: {
             padding: 20,
-            backgroundColor: colors.primary,
+            // backgroundColor: colors.primary, // Removed as it's now inline
+            borderBottomWidth: 1, // Added for borderBottomColor
+            flexDirection: 'row', // Added for layout
+            justifyContent: 'space-between', // Added for layout
+            alignItems: 'center', // Added for layout
         },
-        headerTitle: {
+        title: { // Renamed from headerTitle
             fontSize: 24,
             fontWeight: "bold",
-            color: "#fff",
+            // color: "#fff", // Removed as it's now inline
         },
         headerSubtitle: {
             fontSize: 14,
@@ -256,10 +262,10 @@ export default function CustomersListScreen({ navigation }) {
     }
 
     return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>Klanten</Text>
-                <Text style={styles.headerSubtitle}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
+            <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: isDarkMode ? '#333' : '#e0e0e0', paddingTop: insets.top }]}>
+                <Text style={[styles.title, { color: colors.primary }]}>Klanten</Text>
+                <Text style={[styles.headerSubtitle, { color: colors.onSurfaceVariant }]}>
                     {customers.length} klant{customers.length !== 1 ? "en" : ""}
                 </Text>
             </View>

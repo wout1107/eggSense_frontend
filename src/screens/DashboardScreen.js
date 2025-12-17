@@ -18,6 +18,7 @@ import {
   Divider,
 } from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import stallService from "../services/stallService";
 import productionService from "../services/productionService";
 import salesService from "../services/salesService";
@@ -27,6 +28,7 @@ import { useTheme } from "../context/ThemeContext";
 const { width } = Dimensions.get("window");
 
 export default function DashboardScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { isDarkMode, colors } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
   const [stalls, setStalls] = useState([]);
@@ -548,7 +550,7 @@ export default function DashboardScreen({ navigation }) {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { backgroundColor: colors.primary }]}>
+      <View style={[styles.header, { backgroundColor: colors.primary, paddingTop: insets.top }]}>
         <View style={styles.headerLeft}>
           <Text style={styles.greeting}>Dashboard</Text>
           <Text style={styles.date}>

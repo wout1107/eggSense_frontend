@@ -14,6 +14,10 @@ const authService = {
         if (response.data.token) {
           await AsyncStorage.setItem("token", response.data.token);
         }
+        // Store refreshToken if provided by the backend
+        if (response.data.refreshToken) {
+          await AsyncStorage.setItem("refreshToken", response.data.refreshToken);
+        }
       }
 
       return response.data;
@@ -27,12 +31,21 @@ const authService = {
 
   async logout() {
     try {
-      await api.post("/auth/logout");
+      // Get the refreshToken from storage
+      const refreshToken = await AsyncStorage.getItem("refreshToken");
+
+      // Call the backend logout endpoint with the refreshToken
+      await api.post("/auth/logout", {
+        refreshToken: refreshToken || "",
+      });
     } catch (error) {
       console.error("Logout error:", error);
+      // Continue with local cleanup even if backend logout fails
     } finally {
+      // Always clean up local storage
       await AsyncStorage.removeItem("token");
       await AsyncStorage.removeItem("user");
+      await AsyncStorage.removeItem("refreshToken");
     }
   },
 
@@ -47,9 +60,15 @@ const authService = {
       console.error("Check auth error:", error);
       await AsyncStorage.removeItem("token");
       await AsyncStorage.removeItem("user");
+      await AsyncStorage.removeItem("refreshToken");
       return null;
     }
+  },
+
+  async getRefreshToken() {
+    return await AsyncStorage.getItem("refreshToken");
   },
 };
 
 export default authService;
+

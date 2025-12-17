@@ -3,10 +3,12 @@ import { View, Text, StyleSheet, ScrollView, Alert } from "react-native";
 import { Card, Button, List, Avatar, Divider } from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import authService from "../services/authService";
 import { useTheme } from "../context/ThemeContext";
 
 export default function ProfileScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { isDarkMode, colors } = useTheme();
   const [user, setUser] = useState(null);
 
@@ -51,7 +53,7 @@ export default function ProfileScreen({ navigation }) {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: isDarkMode ? '#333' : '#e0e0e0' }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: isDarkMode ? '#333' : '#e0e0e0', paddingTop: insets.top }]}>
         <Text style={[styles.title, { color: colors.primary }]}>Profiel</Text>
       </View>
 

@@ -24,7 +24,8 @@ const customerService = {
   async getCustomerOrders(id) {
     try {
       const response = await api.get(`/customers/${id}/orders`);
-      return response.data;
+      // Backend returns { customerId, orders: [...] }, extract orders array
+      return response.data.orders || [];
     } catch (error) {
       console.error("Error getting customer orders:", error);
       throw error;

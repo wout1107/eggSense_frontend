@@ -12,9 +12,11 @@ import {
 import productionService from "../services/productionService";
 import stallService from "../services/stallService";
 import { useTheme } from "../context/ThemeContext";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function DailyInputScreen({ navigation, route }) {
   const { isDarkMode, colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { selectedStallId } = route.params || {};
 
   const [eggData, setEggData] = useState({
@@ -255,7 +257,7 @@ export default function DailyInputScreen({ navigation, route }) {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: isDarkMode ? '#333' : '#e0e0e0' }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: isDarkMode ? '#333' : '#e0e0e0', paddingTop: insets.top }]}>
         <Text style={[styles.headerTitle, { color: colors.primary }]}>Dagelijkse Invoer</Text>
         <IconButton
           icon="close"

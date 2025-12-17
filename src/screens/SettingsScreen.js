@@ -26,8 +26,10 @@ import stallService from "../services/stallService";
 import authService from "../services/authService";
 import { useTheme } from "../context/ThemeContext";
 import { useSettings } from "../context/SettingsContext";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function SettingsScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { isDarkMode, toggleTheme, colors } = useTheme();
   const { settings, updateSetting } = useSettings();
 
@@ -222,6 +224,7 @@ export default function SettingsScreen({ navigation }) {
       alignItems: "center",
       justifyContent: "space-between",
       padding: 16,
+      paddingTop: insets.top + 16,
       backgroundColor: colors.surface,
       borderBottomWidth: 1,
       borderBottomColor: isDarkMode ? "#333" : "#e0e0e0",
@@ -820,27 +823,30 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 4,
   },
   settingInfo: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
+    marginRight: 12,
   },
   settingText: {
     flex: 1,
-    marginLeft: -8,
+    marginLeft: 8,
   },
   settingTitle: {
     fontSize: 16,
-    fontWeight: "500",
+    fontWeight: "600",
+    marginBottom: 4,
   },
   settingDescription: {
     fontSize: 13,
-    marginTop: 2,
+    lineHeight: 18,
   },
   settingDivider: {
-    marginVertical: 4,
+    marginVertical: 8,
   },
   aboutText: {
     fontSize: 14,

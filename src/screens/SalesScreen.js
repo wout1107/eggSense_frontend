@@ -21,11 +21,13 @@ import {
   IconButton,
 } from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import salesService from "../services/salesService";
 import customerService from "../services/customerService";
 import { useTheme } from "../context/ThemeContext";
 
 export default function SalesScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { isDarkMode, colors } = useTheme();
 
   const [sales, setSales] = useState([]);
@@ -95,16 +97,17 @@ export default function SalesScreen({ navigation }) {
 
   // Group sales by status for SectionList (EXAM REQUIREMENT)
   const sectionedSales = useMemo(() => {
-    const statusOrder = ['PENDING', 'CONFIRMED', 'DELIVERED', 'CANCELLED'];
+    // Status values must match backend SaleStatus enum: CREATED, CONFIRMED, PAID, CANCELLED
+    const statusOrder = ['CREATED', 'CONFIRMED', 'PAID', 'CANCELLED'];
     const statusLabels = {
-      'PENDING': '🟠 In Behandeling',
+      'CREATED': '🟠 In Behandeling',
       'CONFIRMED': '🔵 Bevestigd',
-      'DELIVERED': '🟢 Geleverd',
+      'PAID': '🟢 Betaald',
       'CANCELLED': '🔴 Geannuleerd',
     };
 
     const grouped = filteredSales.reduce((acc, sale) => {
-      const status = sale.status || 'PENDING';
+      const status = sale.status || 'CREATED';
       if (!acc[status]) {
         acc[status] = [];
       }
@@ -167,24 +170,37 @@ export default function SalesScreen({ navigation }) {
       return;
     }
 
-    const totalEggs =
-      parseInt(newSale.eggsSmall || 0) +
-      parseInt(newSale.eggsMedium || 0) +
-      parseInt(newSale.eggsLarge || 0);
+    const eggsSmall = parseInt(newSale.eggsSmall || 0);
+    const eggsMedium = parseInt(newSale.eggsMedium || 0);
+    const eggsLarge = parseInt(newSale.eggsLarge || 0);
+    const eggsRejected = parseInt(newSale.eggsRejected || 0);
+
+    const totalEggs = eggsSmall + eggsMedium + eggsLarge;
 
     if (totalEggs === 0) {
       Alert.alert("Fout", "Voer minstens één type ei in");
       return;
     }
 
+    // Calculate price in frontend if not manually entered
+    // Default prices: Small=0.15, Medium=0.22, Large=0.28, Rejected=0.05
+    let totalPrice = parseFloat(newSale.totalPrice || 0);
+    if (totalPrice <= 0) {
+      totalPrice =
+        eggsSmall * 0.15 +
+        eggsMedium * 0.22 +
+        eggsLarge * 0.28 +
+        eggsRejected * 0.05;
+    }
+
     try {
       await salesService.createOrder({
         customerId: newSale.customerId,
-        eggsSmall: parseInt(newSale.eggsSmall || 0),
-        eggsMedium: parseInt(newSale.eggsMedium || 0),
-        eggsLarge: parseInt(newSale.eggsLarge || 0),
-        eggsRejected: parseInt(newSale.eggsRejected || 0),
-        totalPrice: parseFloat(newSale.totalPrice || 0),
+        eggsSmall,
+        eggsMedium,
+        eggsLarge,
+        eggsRejected,
+        totalPrice,
         notes: newSale.notes,
       });
 
@@ -219,11 +235,11 @@ export default function SalesScreen({ navigation }) {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case "PENDING":
+      case "CREATED":
         return "#FF9800";
       case "CONFIRMED":
         return "#2196F3";
-      case "DELIVERED":
+      case "PAID":
         return "#4CAF50";
       case "CANCELLED":
         return "#F44336";
@@ -234,11 +250,11 @@ export default function SalesScreen({ navigation }) {
 
   const getStatusLabel = (status) => {
     switch (status) {
-      case "PENDING":
+      case "CREATED":
         return "In behandeling";
       case "CONFIRMED":
         return "Bevestigd";
-      case "DELIVERED":
+      case "PAID":
         return "Geleverd";
       case "CANCELLED":
         return "Geannuleerd";
@@ -334,7 +350,7 @@ export default function SalesScreen({ navigation }) {
             <Text style={[styles.totalPrice, { color: colors.primary }]}>€{item.totalPrice.toFixed(2)}</Text>
           </View>
 
-          {item.status === "PENDING" && (
+          {item.status === "CREATED" && (
             <View style={styles.actionButtons}>
               <Button
                 mode="contained"
@@ -358,7 +374,7 @@ export default function SalesScreen({ navigation }) {
           {item.status === "CONFIRMED" && (
             <Button
               mode="contained"
-              onPress={() => handleUpdateStatus(item.id, "DELIVERED")}
+              onPress={() => handleUpdateStatus(item.id, "PAID")}
               style={styles.deliverButton}
               buttonColor="#2196F3"
             >
@@ -372,7 +388,7 @@ export default function SalesScreen({ navigation }) {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: isDarkMode ? '#333' : '#e0e0e0' }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: isDarkMode ? '#333' : '#e0e0e0', paddingTop: insets.top }]}>
         <Text style={[styles.title, { color: colors.primary }]}>Verkoop</Text>
         <Searchbar
           placeholder="Zoek op klant of order #"
@@ -388,9 +404,9 @@ export default function SalesScreen({ navigation }) {
           onValueChange={setStatusFilter}
           buttons={[
             { value: "all", label: "Alle" },
-            { value: "PENDING", label: "Pending" },
+            { value: "CREATED", label: "In Behandeling" },
             { value: "CONFIRMED", label: "Bevestigd" },
-            { value: "DELIVERED", label: "Geleverd" },
+            { value: "PAID", label: "Betaald" },
           ]}
           style={styles.filterButtons}
         />

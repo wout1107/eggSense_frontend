@@ -22,9 +22,11 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import salesService from "../services/salesService";
 import customerService from "../services/customerService";
 import { useTheme } from "../context/ThemeContext";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function OrderDetailScreen({ route, navigation }) {
   const { isDarkMode, colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { orderId } = route.params;
   const [order, setOrder] = useState(null);
   const [customer, setCustomer] = useState(null);
@@ -176,7 +178,7 @@ export default function OrderDetailScreen({ route, navigation }) {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { backgroundColor: colors.primary }]}>
+      <View style={[styles.header, { backgroundColor: colors.primary, paddingTop: insets.top }]}>
         <IconButton
           icon="arrow-left"
           size={24}
@@ -278,47 +280,48 @@ export default function OrderDetailScreen({ route, navigation }) {
         </Card>
 
         {/* Order Details */}
-        <Card style={styles.card}>
+        <Card style={[styles.card, { backgroundColor: colors.surface }]}>
           <Card.Title
             title="Order Details"
-            left={(props) => <Icon {...props} name="receipt" size={24} />}
+            titleStyle={{ color: colors.onSurface }}
+            left={(props) => <Icon {...props} name="receipt" size={24} color={colors.primary} />}
           />
           <Card.Content>
             <View style={styles.eggBreakdown}>
               {order.eggsSmall > 0 && (
                 <View style={styles.eggRow}>
                   <View style={styles.eggInfo}>
-                    <Icon name="egg" size={20} color="#666" />
-                    <Text style={styles.eggLabel}>Kleine Eieren</Text>
+                    <Icon name="egg" size={20} color={colors.onSurfaceVariant} />
+                    <Text style={[styles.eggLabel, { color: colors.onSurface }]}>Kleine Eieren</Text>
                   </View>
-                  <Text style={styles.eggValue}>{order.eggsSmall}</Text>
+                  <Text style={[styles.eggValue, { color: colors.onSurface }]}>{order.eggsSmall}</Text>
                 </View>
               )}
               {order.eggsMedium > 0 && (
                 <View style={styles.eggRow}>
                   <View style={styles.eggInfo}>
-                    <Icon name="egg" size={24} color="#666" />
-                    <Text style={styles.eggLabel}>Middelgrote Eieren</Text>
+                    <Icon name="egg" size={24} color={colors.onSurfaceVariant} />
+                    <Text style={[styles.eggLabel, { color: colors.onSurface }]}>Middelgrote Eieren</Text>
                   </View>
-                  <Text style={styles.eggValue}>{order.eggsMedium}</Text>
+                  <Text style={[styles.eggValue, { color: colors.onSurface }]}>{order.eggsMedium}</Text>
                 </View>
               )}
               {order.eggsLarge > 0 && (
                 <View style={styles.eggRow}>
                   <View style={styles.eggInfo}>
-                    <Icon name="egg" size={28} color="#666" />
-                    <Text style={styles.eggLabel}>Grote Eieren</Text>
+                    <Icon name="egg" size={28} color={colors.onSurfaceVariant} />
+                    <Text style={[styles.eggLabel, { color: colors.onSurface }]}>Grote Eieren</Text>
                   </View>
-                  <Text style={styles.eggValue}>{order.eggsLarge}</Text>
+                  <Text style={[styles.eggValue, { color: colors.onSurface }]}>{order.eggsLarge}</Text>
                 </View>
               )}
               {order.eggsRejected > 0 && (
                 <View style={styles.eggRow}>
                   <View style={styles.eggInfo}>
                     <Icon name="egg-off" size={24} color="#F44336" />
-                    <Text style={styles.eggLabel}>Afgekeurd</Text>
+                    <Text style={[styles.eggLabel, { color: colors.onSurface }]}>Afgekeurd</Text>
                   </View>
-                  <Text style={styles.eggValue}>{order.eggsRejected}</Text>
+                  <Text style={[styles.eggValue, { color: colors.onSurface }]}>{order.eggsRejected}</Text>
                 </View>
               )}
             </View>
@@ -326,13 +329,13 @@ export default function OrderDetailScreen({ route, navigation }) {
             <Divider style={styles.divider} />
 
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Totaal aantal eieren:</Text>
-              <Text style={styles.totalValue}>{totalEggs}</Text>
+              <Text style={[styles.totalLabel, { color: colors.onSurface }]}>Totaal aantal eieren:</Text>
+              <Text style={[styles.totalValue, { color: colors.onSurface }]}>{totalEggs}</Text>
             </View>
 
             <View style={styles.totalRow}>
-              <Text style={styles.priceLabel}>Totaalprijs:</Text>
-              <Text style={styles.priceValue}>
+              <Text style={[styles.priceLabel, { color: colors.primary }]}>Totaalprijs:</Text>
+              <Text style={[styles.priceValue, { color: colors.primary }]}>
                 €{order.totalPrice.toFixed(2)}
               </Text>
             </View>
@@ -341,22 +344,24 @@ export default function OrderDetailScreen({ route, navigation }) {
 
         {/* Notes */}
         {order.notes && (
-          <Card style={styles.card}>
+          <Card style={[styles.card, { backgroundColor: colors.surface }]}>
             <Card.Title
               title="Notities"
-              left={(props) => <Icon {...props} name="note-text" size={24} />}
+              titleStyle={{ color: colors.onSurface }}
+              left={(props) => <Icon {...props} name="note-text" size={24} color={colors.primary} />}
             />
             <Card.Content>
-              <Text style={styles.notesText}>{order.notes}</Text>
+              <Text style={[styles.notesText, { color: colors.onSurface }]}>{order.notes}</Text>
             </Card.Content>
           </Card>
         )}
 
         {/* Order Timeline */}
-        <Card style={styles.card}>
+        <Card style={[styles.card, { backgroundColor: colors.surface }]}>
           <Card.Title
             title="Order Status"
-            left={(props) => <Icon {...props} name="timeline" size={24} />}
+            titleStyle={{ color: colors.onSurface }}
+            left={(props) => <Icon {...props} name="timeline" size={24} color={colors.primary} />}
           />
           <Card.Content>
             <View style={styles.timeline}>
@@ -369,7 +374,7 @@ export default function OrderDetailScreen({ route, navigation }) {
                   {new Date(order.saleTime).toLocaleString("nl-NL")}
                 </Text>
               </View>
-              {order.status !== "PENDING" && (
+              {order.status !== "CREATED" && (
                 <View style={styles.timelineItem}>
                   <View
                     style={[
@@ -387,7 +392,7 @@ export default function OrderDetailScreen({ route, navigation }) {
         </Card>
 
         {/* Action Buttons */}
-        {order.status === "PENDING" && (
+        {order.status === "CREATED" && (
           <View style={styles.actionButtons}>
             <Button
               mode="contained"
@@ -413,7 +418,7 @@ export default function OrderDetailScreen({ route, navigation }) {
         {order.status === "CONFIRMED" && (
           <Button
             mode="contained"
-            onPress={() => handleStatusUpdate("DELIVERED")}
+            onPress={() => handleStatusUpdate("PAID")}
             style={styles.deliverButton}
             buttonColor="#2196F3"
             icon="truck-delivery"

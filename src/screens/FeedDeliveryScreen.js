@@ -17,11 +17,13 @@ import {
   Chip,
 } from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import api from "../services/api";
 import stallService from "../services/stallService";
 import { useTheme } from "../context/ThemeContext";
 
 export default function FeedDeliveryScreen() {
+  const insets = useSafeAreaInsets();
   const { isDarkMode, colors } = useTheme();
   const [deliveries, setDeliveries] = useState([]);
   const [stalls, setStalls] = useState([]);
@@ -221,7 +223,7 @@ export default function FeedDeliveryScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: isDarkMode ? '#333' : '#e0e0e0' }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: isDarkMode ? '#333' : '#e0e0e0', paddingTop: insets.top }]}>
         <Text style={[styles.title, { color: colors.primary }]}>Voerleveringen</Text>
       </View>
 

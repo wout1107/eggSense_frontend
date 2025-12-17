@@ -21,9 +21,11 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import customerService from "../services/customerService";
 import salesService from "../services/salesService";
 import { useTheme } from "../context/ThemeContext";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function CustomerDetailScreen({ route, navigation }) {
   const { isDarkMode, colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { customerId } = route.params;
   const [customer, setCustomer] = useState(null);
   const [customerOrders, setCustomerOrders] = useState([]);
@@ -206,7 +208,7 @@ export default function CustomerDetailScreen({ route, navigation }) {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { backgroundColor: colors.primary }]}>
+      <View style={[styles.header, { backgroundColor: colors.primary, paddingTop: insets.top }]}>
         <IconButton
           icon="arrow-left"
           size={24}

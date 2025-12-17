@@ -10,10 +10,12 @@ import {
 } from "react-native";
 import { Card, Title, Paragraph, IconButton, Chip } from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
 
 export default function WelcomeScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const [currentSlide, setCurrentSlide] = useState(0);
 
   const features = [
@@ -89,7 +91,7 @@ export default function WelcomeScreen({ navigation }) {
 
   return (
     <ScrollContainer
-      style={styles.container}
+      style={[styles.container, { paddingTop: insets.top }]}
       contentContainerStyle={styles.contentContainer}
     >
       <View style={styles.heroSection}>

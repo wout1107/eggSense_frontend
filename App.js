@@ -6,6 +6,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Provider as PaperProvider } from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { View, ActivityIndicator, Platform } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 // Context providers
 import { ThemeProvider, useTheme } from "./src/context/ThemeContext";
@@ -201,10 +202,12 @@ function AppContent() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <SettingsProvider>
-        <AppContent />
-      </SettingsProvider>
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <SettingsProvider>
+          <AppContent />
+        </SettingsProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }
