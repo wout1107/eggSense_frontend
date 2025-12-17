@@ -16,7 +16,7 @@ import WelcomeScreen from "./src/screens/WelcomeScreen";
 import LoginScreen from "./src/screens/LoginScreen";
 import DashboardScreen from "./src/screens/DashboardScreen";
 import SalesScreen from "./src/screens/SalesScreen";
-import CustomersScreen from "./src/screens/CustomerDetailScreen";
+import CustomersListScreen from "./src/screens/CustomersListScreen";
 import ProfileScreen from "./src/screens/ProfileScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
 import DailyInputScreen from "./src/screens/DailyInputScreen";
@@ -73,7 +73,7 @@ function MainTabs() {
       />
       <Tab.Screen
         name="Customers"
-        component={CustomersScreen}
+        component={CustomersListScreen}
         options={{ title: "Klanten" }}
       />
       <Tab.Screen

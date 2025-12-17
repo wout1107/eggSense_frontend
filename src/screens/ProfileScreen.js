@@ -4,8 +4,10 @@ import { Card, Button, List, Avatar, Divider } from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import authService from "../services/authService";
+import { useTheme } from "../context/ThemeContext";
 
 export default function ProfileScreen({ navigation }) {
+  const { isDarkMode, colors } = useTheme();
   const [user, setUser] = useState(null);
 
   useEffect(() => {
@@ -48,14 +50,14 @@ export default function ProfileScreen({ navigation }) {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Profiel</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: isDarkMode ? '#333' : '#e0e0e0' }]}>
+        <Text style={[styles.title, { color: colors.primary }]}>Profiel</Text>
       </View>
 
       <ScrollView style={styles.content}>
         {/* Profile Card */}
-        <Card style={styles.profileCard}>
+        <Card style={[styles.profileCard, { backgroundColor: colors.surface }]}>
           <Card.Content style={styles.profileContent}>
             <Avatar.Icon
               size={80}
@@ -63,58 +65,68 @@ export default function ProfileScreen({ navigation }) {
               style={styles.avatar}
               color="#fff"
             />
-            <Text style={styles.userName}>{user?.username || "Gebruiker"}</Text>
-            <Text style={styles.userRole}>
+            <Text style={[styles.userName, { color: colors.onSurface }]}>{user?.username || "Gebruiker"}</Text>
+            <Text style={[styles.userRole, { color: colors.onSurfaceVariant }]}>
               {user?.role || "Gebruiker"} Account
             </Text>
           </Card.Content>
         </Card>
 
         {/* Account Information */}
-        <Card style={styles.card}>
+        <Card style={[styles.card, { backgroundColor: colors.surface }]}>
           <Card.Title
             title="Account Informatie"
+            titleStyle={{ color: colors.onSurface }}
             left={(props) => (
-              <Icon {...props} name="account-details" size={24} />
+              <Icon {...props} name="account-details" size={24} color={colors.onSurfaceVariant} />
             )}
           />
           <Card.Content>
             <List.Item
               title="Gebruikersnaam"
               description={user?.username || "Niet beschikbaar"}
-              left={(props) => <List.Icon {...props} icon="account" />}
+              titleStyle={{ color: colors.onSurface }}
+              descriptionStyle={{ color: colors.onSurfaceVariant }}
+              left={(props) => <List.Icon {...props} icon="account" color={colors.onSurfaceVariant} />}
             />
-            <Divider />
+            <Divider style={{ backgroundColor: isDarkMode ? '#333' : '#e0e0e0' }} />
             <List.Item
               title="Rol"
               description={user?.role || "Gebruiker"}
-              left={(props) => <List.Icon {...props} icon="shield-account" />}
+              titleStyle={{ color: colors.onSurface }}
+              descriptionStyle={{ color: colors.onSurfaceVariant }}
+              left={(props) => <List.Icon {...props} icon="shield-account" color={colors.onSurfaceVariant} />}
             />
           </Card.Content>
         </Card>
 
         {/* Settings & Management */}
-        <Card style={styles.card}>
+        <Card style={[styles.card, { backgroundColor: colors.surface }]}>
           <Card.Title
             title="Beheer"
-            left={(props) => <Icon {...props} name="cog" size={24} />}
+            titleStyle={{ color: colors.onSurface }}
+            left={(props) => <Icon {...props} name="cog" size={24} color={colors.onSurfaceVariant} />}
           />
           <Card.Content>
             <List.Item
               title="Instellingen"
               description="Stallen, app en account instellingen"
-              left={(props) => <List.Icon {...props} icon="cog-outline" />}
-              right={(props) => <List.Icon {...props} icon="chevron-right" />}
+              titleStyle={{ color: colors.onSurface }}
+              descriptionStyle={{ color: colors.onSurfaceVariant }}
+              left={(props) => <List.Icon {...props} icon="cog-outline" color={colors.onSurfaceVariant} />}
+              right={(props) => <List.Icon {...props} icon="chevron-right" color={colors.onSurfaceVariant} />}
               onPress={() => navigation.navigate("Settings")}
             />
-            <Divider />
+            <Divider style={{ backgroundColor: isDarkMode ? '#333' : '#e0e0e0' }} />
             <List.Item
               title="Over EggSense"
               description="Versie en app informatie"
+              titleStyle={{ color: colors.onSurface }}
+              descriptionStyle={{ color: colors.onSurfaceVariant }}
               left={(props) => (
-                <List.Icon {...props} icon="information-outline" />
+                <List.Icon {...props} icon="information-outline" color={colors.onSurfaceVariant} />
               )}
-              right={(props) => <List.Icon {...props} icon="chevron-right" />}
+              right={(props) => <List.Icon {...props} icon="chevron-right" color={colors.onSurfaceVariant} />}
               onPress={() =>
                 Alert.alert(
                   "Over EggSense",
@@ -122,12 +134,14 @@ export default function ProfileScreen({ navigation }) {
                 )
               }
             />
-            <Divider />
+            <Divider style={{ backgroundColor: isDarkMode ? '#333' : '#e0e0e0' }} />
             <List.Item
               title="Privacy Beleid"
               description="Gegevensbescherming en privacy"
-              left={(props) => <List.Icon {...props} icon="shield-lock" />}
-              right={(props) => <List.Icon {...props} icon="chevron-right" />}
+              titleStyle={{ color: colors.onSurface }}
+              descriptionStyle={{ color: colors.onSurfaceVariant }}
+              left={(props) => <List.Icon {...props} icon="shield-lock" color={colors.onSurfaceVariant} />}
+              right={(props) => <List.Icon {...props} icon="chevron-right" color={colors.onSurfaceVariant} />}
               onPress={() =>
                 Alert.alert(
                   "Privacy Beleid",
@@ -135,12 +149,14 @@ export default function ProfileScreen({ navigation }) {
                 )
               }
             />
-            <Divider />
+            <Divider style={{ backgroundColor: isDarkMode ? '#333' : '#e0e0e0' }} />
             <List.Item
               title="Hulp & Support"
               description="Contact opnemen met support"
-              left={(props) => <List.Icon {...props} icon="help-circle" />}
-              right={(props) => <List.Icon {...props} icon="chevron-right" />}
+              titleStyle={{ color: colors.onSurface }}
+              descriptionStyle={{ color: colors.onSurfaceVariant }}
+              left={(props) => <List.Icon {...props} icon="help-circle" color={colors.onSurfaceVariant} />}
+              right={(props) => <List.Icon {...props} icon="chevron-right" color={colors.onSurfaceVariant} />}
               onPress={() =>
                 Alert.alert(
                   "Support",
@@ -152,22 +168,27 @@ export default function ProfileScreen({ navigation }) {
         </Card>
 
         {/* App Information */}
-        <Card style={styles.card}>
+        <Card style={[styles.card, { backgroundColor: colors.surface }]}>
           <Card.Title
             title="Applicatie"
-            left={(props) => <Icon {...props} name="information" size={24} />}
+            titleStyle={{ color: colors.onSurface }}
+            left={(props) => <Icon {...props} name="information" size={24} color={colors.onSurfaceVariant} />}
           />
           <Card.Content>
             <List.Item
               title="Versie"
               description="1.0.0"
-              left={(props) => <List.Icon {...props} icon="tag" />}
+              titleStyle={{ color: colors.onSurface }}
+              descriptionStyle={{ color: colors.onSurfaceVariant }}
+              left={(props) => <List.Icon {...props} icon="tag" color={colors.onSurfaceVariant} />}
             />
-            <Divider />
+            <Divider style={{ backgroundColor: isDarkMode ? '#333' : '#e0e0e0' }} />
             <List.Item
               title="Laatste update"
               description="December 2024"
-              left={(props) => <List.Icon {...props} icon="update" />}
+              titleStyle={{ color: colors.onSurface }}
+              descriptionStyle={{ color: colors.onSurfaceVariant }}
+              left={(props) => <List.Icon {...props} icon="update" color={colors.onSurfaceVariant} />}
             />
           </Card.Content>
         </Card>
@@ -184,8 +205,8 @@ export default function ProfileScreen({ navigation }) {
         </Button>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>EggSense v1.0.0</Text>
-          <Text style={styles.footerSubtext}>© 2024 EggSense Solutions</Text>
+          <Text style={[styles.footerText, { color: colors.primary }]}>EggSense v1.0.0</Text>
+          <Text style={[styles.footerSubtext, { color: colors.onSurfaceVariant }]}>© 2024 EggSense Solutions</Text>
         </View>
       </ScrollView>
     </View>

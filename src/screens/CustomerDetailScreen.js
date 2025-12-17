@@ -20,8 +20,10 @@ import {
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import customerService from "../services/customerService";
 import salesService from "../services/salesService";
+import { useTheme } from "../context/ThemeContext";
 
 export default function CustomerDetailScreen({ route, navigation }) {
+  const { isDarkMode, colors } = useTheme();
   const { customerId } = route.params;
   const [customer, setCustomer] = useState(null);
   const [customerOrders, setCustomerOrders] = useState([]);
@@ -153,12 +155,12 @@ export default function CustomerDetailScreen({ route, navigation }) {
 
     return (
       <Card
-        style={styles.orderCard}
+        style={[styles.orderCard, { backgroundColor: colors.surface }]}
         onPress={() => navigation.navigate("OrderDetail", { orderId: item.id })}
       >
         <Card.Content>
           <View style={styles.orderHeader}>
-            <Text style={styles.orderNumber}>Order #{item.id}</Text>
+            <Text style={[styles.orderNumber, { color: colors.onSurface }]}>Order #{item.id}</Text>
             <Chip
               style={[
                 styles.statusChip,
@@ -169,7 +171,7 @@ export default function CustomerDetailScreen({ route, navigation }) {
               {getStatusLabel(item.status)}
             </Chip>
           </View>
-          <Text style={styles.orderDate}>
+          <Text style={[styles.orderDate, { color: colors.onSurfaceVariant }]}>
             {new Date(item.saleTime).toLocaleDateString("nl-NL", {
               day: "2-digit",
               month: "short",
@@ -177,8 +179,8 @@ export default function CustomerDetailScreen({ route, navigation }) {
             })}
           </Text>
           <View style={styles.orderFooter}>
-            <Text style={styles.orderEggs}>{totalEggs} eieren</Text>
-            <Text style={styles.orderPrice}>€{item.totalPrice.toFixed(2)}</Text>
+            <Text style={[styles.orderEggs, { color: colors.onSurfaceVariant }]}>{totalEggs} eieren</Text>
+            <Text style={[styles.orderPrice, { color: colors.primary }]}>€{item.totalPrice.toFixed(2)}</Text>
           </View>
         </Card.Content>
       </Card>
@@ -187,24 +189,24 @@ export default function CustomerDetailScreen({ route, navigation }) {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2E7D32" />
-        <Text style={styles.loadingText}>Laden...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.onSurfaceVariant }]}>Laden...</Text>
       </View>
     );
   }
 
   if (!customer) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text>Klant niet gevonden</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <Text style={{ color: colors.onSurface }}>Klant niet gevonden</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.primary }]}>
         <IconButton
           icon="arrow-left"
           size={24}
@@ -225,72 +227,73 @@ export default function CustomerDetailScreen({ route, navigation }) {
 
       <ScrollView style={styles.content}>
         {/* Customer Statistics */}
-        <Card style={styles.card}>
+        <Card style={[styles.card, { backgroundColor: colors.surface }]}>
           <Card.Content>
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
-                <Icon name="cart" size={32} color="#2E7D32" />
-                <Text style={styles.statValue}>
+                <Icon name="cart" size={32} color={colors.primary} />
+                <Text style={[styles.statValue, { color: colors.onSurface }]}>
                   {customerStats?.orderCount || 0}
                 </Text>
-                <Text style={styles.statLabel}>Orders</Text>
+                <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Orders</Text>
               </View>
               <View style={styles.statItem}>
-                <Icon name="currency-eur" size={32} color="#2E7D32" />
-                <Text style={styles.statValue}>
+                <Icon name="currency-eur" size={32} color={colors.primary} />
+                <Text style={[styles.statValue, { color: colors.onSurface }]}>
                   €{(customerStats?.totalRevenue || 0).toFixed(2)}
                 </Text>
-                <Text style={styles.statLabel}>Totaal Uitgegeven</Text>
+                <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Totaal Uitgegeven</Text>
               </View>
               <View style={styles.statItem}>
-                <Icon name="chart-line" size={32} color="#2E7D32" />
-                <Text style={styles.statValue}>
+                <Icon name="chart-line" size={32} color={colors.primary} />
+                <Text style={[styles.statValue, { color: colors.onSurface }]}>
                   €{(customerStats?.averageOrderValue || 0).toFixed(2)}
                 </Text>
-                <Text style={styles.statLabel}>Gem. Orderwaarde</Text>
+                <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Gem. Orderwaarde</Text>
               </View>
             </View>
           </Card.Content>
         </Card>
 
         {/* Contact Information */}
-        <Card style={styles.card}>
+        <Card style={[styles.card, { backgroundColor: colors.surface }]}>
           <Card.Title
             title="Contactinformatie"
+            titleStyle={{ color: colors.onSurface }}
             left={(props) => (
-              <Icon {...props} name="card-account-details" size={24} />
+              <Icon {...props} name="card-account-details" size={24} color={colors.onSurfaceVariant} />
             )}
           />
           <Card.Content>
             {customer.email && (
               <View style={styles.infoRow}>
-                <Icon name="email" size={20} color="#666" />
-                <Text style={styles.infoText}>{customer.email}</Text>
+                <Icon name="email" size={20} color={colors.onSurfaceVariant} />
+                <Text style={[styles.infoText, { color: colors.onSurface }]}>{customer.email}</Text>
               </View>
             )}
             {customer.phone && (
               <View style={styles.infoRow}>
-                <Icon name="phone" size={20} color="#666" />
-                <Text style={styles.infoText}>{customer.phone}</Text>
+                <Icon name="phone" size={20} color={colors.onSurfaceVariant} />
+                <Text style={[styles.infoText, { color: colors.onSurface }]}>{customer.phone}</Text>
               </View>
             )}
             {customer.address && (
               <View style={styles.infoRow}>
-                <Icon name="map-marker" size={20} color="#666" />
-                <Text style={styles.infoText}>{customer.address}</Text>
+                <Icon name="map-marker" size={20} color={colors.onSurfaceVariant} />
+                <Text style={[styles.infoText, { color: colors.onSurface }]}>{customer.address}</Text>
               </View>
             )}
             {customer.notes && (
               <View style={styles.infoRow}>
-                <Icon name="note-text" size={20} color="#666" />
-                <Text style={styles.infoText}>{customer.notes}</Text>
+                <Icon name="note-text" size={20} color={colors.onSurfaceVariant} />
+                <Text style={[styles.infoText, { color: colors.onSurface }]}>{customer.notes}</Text>
               </View>
             )}
             {!customer.email &&
               !customer.phone &&
               !customer.address &&
               !customer.notes && (
-                <Text style={styles.noInfoText}>
+                <Text style={[styles.noInfoText, { color: colors.onSurfaceVariant }]}>
                   Geen aanvullende informatie beschikbaar
                 </Text>
               )}
@@ -298,13 +301,14 @@ export default function CustomerDetailScreen({ route, navigation }) {
         </Card>
 
         {/* Order History */}
-        <Card style={styles.card}>
+        <Card style={[styles.card, { backgroundColor: colors.surface }]}>
           <Card.Title
             title="Ordergeschiedenis"
-            subtitle={`${customerOrders.length} order${
-              customerOrders.length !== 1 ? "s" : ""
-            }`}
-            left={(props) => <Icon {...props} name="history" size={24} />}
+            titleStyle={{ color: colors.onSurface }}
+            subtitle={`${customerOrders.length} order${customerOrders.length !== 1 ? "s" : ""
+              }`}
+            subtitleStyle={{ color: colors.onSurfaceVariant }}
+            left={(props) => <Icon {...props} name="history" size={24} color={colors.onSurfaceVariant} />}
           />
           <Card.Content>
             {customerOrders.length > 0 ? (
@@ -316,8 +320,8 @@ export default function CustomerDetailScreen({ route, navigation }) {
               />
             ) : (
               <View style={styles.emptyOrders}>
-                <Icon name="cart-off" size={48} color="#ccc" />
-                <Text style={styles.emptyText}>Nog geen orders</Text>
+                <Icon name="cart-off" size={48} color={colors.onSurfaceVariant} />
+                <Text style={[styles.emptyText, { color: colors.onSurfaceVariant }]}>Nog geen orders</Text>
               </View>
             )}
           </Card.Content>

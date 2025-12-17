@@ -21,8 +21,10 @@ import {
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import salesService from "../services/salesService";
 import customerService from "../services/customerService";
+import { useTheme } from "../context/ThemeContext";
 
 export default function OrderDetailScreen({ route, navigation }) {
+  const { isDarkMode, colors } = useTheme();
   const { orderId } = route.params;
   const [order, setOrder] = useState(null);
   const [customer, setCustomer] = useState(null);
@@ -154,17 +156,17 @@ export default function OrderDetailScreen({ route, navigation }) {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2E7D32" />
-        <Text style={styles.loadingText}>Laden...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.onSurfaceVariant }]}>Laden...</Text>
       </View>
     );
   }
 
   if (!order || !customer) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text>Order niet gevonden</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <Text style={{ color: colors.onSurface }}>Order niet gevonden</Text>
       </View>
     );
   }
@@ -173,8 +175,8 @@ export default function OrderDetailScreen({ route, navigation }) {
     (order.eggsSmall || 0) + (order.eggsMedium || 0) + (order.eggsLarge || 0);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.primary }]}>
         <IconButton
           icon="arrow-left"
           size={24}
@@ -234,17 +236,19 @@ export default function OrderDetailScreen({ route, navigation }) {
       <ScrollView style={styles.content}>
         {/* Customer Information */}
         <Card
-          style={styles.card}
+          style={[styles.card, { backgroundColor: colors.surface }]}
           onPress={() =>
             navigation.navigate("CustomerDetail", { customerId: customer.id })
           }
         >
           <Card.Title
             title="Klantinformatie"
+            titleStyle={{ color: colors.onSurface }}
             subtitle="Tik om klantdetails te bekijken"
-            left={(props) => <Icon {...props} name="account" size={24} />}
+            subtitleStyle={{ color: colors.onSurfaceVariant }}
+            left={(props) => <Icon {...props} name="account" size={24} color={colors.onSurfaceVariant} />}
             right={(props) => (
-              <Icon {...props} name="chevron-right" size={24} />
+              <Icon {...props} name="chevron-right" size={24} color={colors.onSurfaceVariant} />
             )}
           />
           <Card.Content>

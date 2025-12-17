@@ -11,8 +11,10 @@ import {
 } from "react-native-paper";
 import productionService from "../services/productionService";
 import stallService from "../services/stallService";
+import { useTheme } from "../context/ThemeContext";
 
 export default function DailyInputScreen({ navigation, route }) {
+  const { isDarkMode, colors } = useTheme();
   const { selectedStallId } = route.params || {};
 
   const [eggData, setEggData] = useState({
@@ -153,9 +155,9 @@ export default function DailyInputScreen({ navigation, route }) {
   const renderStallSelector = () => {
     if (stalls.length === 0) {
       return (
-        <Card style={styles.card}>
+        <Card style={[styles.card, { backgroundColor: colors.surface }]}>
           <Card.Content>
-            <Text style={styles.noStallsText}>
+            <Text style={[styles.noStallsText, { color: colors.onSurfaceVariant }]}>
               Geen stallen beschikbaar. Maak eerst een stal aan in de
               instellingen.
             </Text>
@@ -163,7 +165,7 @@ export default function DailyInputScreen({ navigation, route }) {
               mode="contained"
               onPress={() => navigation.navigate("Settings")}
               style={styles.settingsButton}
-              buttonColor="#2E7D32"
+              buttonColor={colors.primary}
               icon="cog"
             >
               Naar Instellingen
@@ -178,21 +180,21 @@ export default function DailyInputScreen({ navigation, route }) {
       const isPreSelected = selectedStallId === currentStall.id;
 
       return (
-        <Card style={styles.stallCard}>
+        <Card style={[styles.stallCard, { backgroundColor: colors.surface }]}>
           <Card.Content>
             <View style={styles.singleStallHeader}>
-              <Text style={styles.stallLabel}>Stal:</Text>
+              <Text style={[styles.stallLabel, { color: colors.primary }]}>Stal:</Text>
               <Chip
                 mode="flat"
                 icon="barn"
-                style={styles.selectedStallChip}
-                textStyle={styles.selectedStallText}
+                style={[styles.selectedStallChip, { backgroundColor: isDarkMode ? '#1B5E20' : '#E8F5E9' }]}
+                textStyle={[styles.selectedStallText, { color: colors.primary }]}
               >
                 {currentStall.name}
                 {isPreSelected && " ✓"}
               </Chip>
             </View>
-            <Text style={styles.stallCapacity}>
+            <Text style={[styles.stallCapacity, { color: colors.onSurfaceVariant }]}>
               Capaciteit: {currentStall.capacity} kippen
             </Text>
             {isPreSelected && (
@@ -207,9 +209,9 @@ export default function DailyInputScreen({ navigation, route }) {
 
     // Multiple stalls - show selector
     return (
-      <Card style={styles.stallCard}>
+      <Card style={[styles.stallCard, { backgroundColor: colors.surface }]}>
         <Card.Content>
-          <Title style={styles.stallSelectorTitle}>Selecteer Stal</Title>
+          <Title style={[styles.stallSelectorTitle, { color: colors.primary }]}>Selecteer Stal</Title>
           {selectedStallId && (
             <Text style={styles.preSelectedHint}>
               ✓ Stal geselecteerd van Dashboard
@@ -228,11 +230,9 @@ export default function DailyInputScreen({ navigation, route }) {
                   onPress={() => setSelectedStall(stall.id)}
                   style={[
                     styles.stallChip,
-                    isCurrentlySelected && styles.selectedStallChipMulti,
+                    isCurrentlySelected && { backgroundColor: colors.primary },
                   ]}
-                  textStyle={
-                    isCurrentlySelected && styles.selectedStallTextMulti
-                  }
+                  textStyle={isCurrentlySelected ? { color: '#fff', fontWeight: 'bold' } : { color: colors.onSurface }}
                   icon={wasPreSelected ? "check-circle" : "barn"}
                 >
                   {stall.name}
@@ -241,8 +241,8 @@ export default function DailyInputScreen({ navigation, route }) {
             })}
           </View>
           {selectedStall && (
-            <View style={styles.selectedStallInfo}>
-              <Text style={styles.selectedStallInfoText}>
+            <View style={[styles.selectedStallInfo, { backgroundColor: isDarkMode ? '#1B5E20' : '#E8F5E9' }]}>
+              <Text style={[styles.selectedStallInfoText, { color: colors.primary }]}>
                 Capaciteit:{" "}
                 {stalls.find((s) => s.id === selectedStall)?.capacity} kippen
               </Text>
@@ -254,13 +254,13 @@ export default function DailyInputScreen({ navigation, route }) {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Dagelijkse Invoer</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: isDarkMode ? '#333' : '#e0e0e0' }]}>
+        <Text style={[styles.headerTitle, { color: colors.primary }]}>Dagelijkse Invoer</Text>
         <IconButton
           icon="close"
           size={24}
-          iconColor="#2E7D32"
+          iconColor={colors.primary}
           onPress={() => {
             if (navigation.canGoBack()) {
               navigation.goBack();
@@ -272,7 +272,7 @@ export default function DailyInputScreen({ navigation, route }) {
       </View>
 
       <ScrollView style={styles.scrollContent}>
-        <Text style={styles.date}>
+        <Text style={[styles.date, { color: colors.onSurfaceVariant }]}>
           {new Date().toLocaleDateString("nl-NL", {
             weekday: "long",
             year: "numeric",
@@ -285,9 +285,9 @@ export default function DailyInputScreen({ navigation, route }) {
 
         {stalls.length > 0 && selectedStall && (
           <>
-            <Card style={styles.card}>
+            <Card style={[styles.card, { backgroundColor: colors.surface }]}>
               <Card.Content>
-                <Title style={styles.cardTitle}>Eieren Productie</Title>
+                <Title style={[styles.cardTitle, { color: colors.primary }]}>Eieren Productie</Title>
                 <TextInput
                   label="Kleine eieren (S)"
                   value={eggData.small}
@@ -295,9 +295,9 @@ export default function DailyInputScreen({ navigation, route }) {
                     setEggData({ ...eggData, small: text })
                   }
                   keyboardType="numeric"
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: colors.surface }]}
                   mode="outlined"
-                  left={<TextInput.Icon icon="egg" />}
+                  left={<TextInput.Icon icon="egg" color={colors.onSurfaceVariant} />}
                 />
                 <TextInput
                   label="Middelgrote eieren (M)"
@@ -306,9 +306,9 @@ export default function DailyInputScreen({ navigation, route }) {
                     setEggData({ ...eggData, medium: text })
                   }
                   keyboardType="numeric"
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: colors.surface }]}
                   mode="outlined"
-                  left={<TextInput.Icon icon="egg" />}
+                  left={<TextInput.Icon icon="egg" color={colors.onSurfaceVariant} />}
                 />
                 <TextInput
                   label="Grote eieren (L)"
@@ -317,13 +317,13 @@ export default function DailyInputScreen({ navigation, route }) {
                     setEggData({ ...eggData, large: text })
                   }
                   keyboardType="numeric"
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: colors.surface }]}
                   mode="outlined"
-                  left={<TextInput.Icon icon="egg" />}
+                  left={<TextInput.Icon icon="egg" color={colors.onSurfaceVariant} />}
                 />
-                <View style={styles.totalEggsContainer}>
-                  <Text style={styles.totalEggsLabel}>Totaal:</Text>
-                  <Text style={styles.totalEggsValue}>
+                <View style={[styles.totalEggsContainer, { backgroundColor: isDarkMode ? '#1B5E20' : '#E8F5E9' }]}>
+                  <Text style={[styles.totalEggsLabel, { color: colors.primary }]}>Totaal:</Text>
+                  <Text style={[styles.totalEggsValue, { color: colors.primary }]}>
                     {parseInt(eggData.small || 0) +
                       parseInt(eggData.medium || 0) +
                       parseInt(eggData.large || 0) || 0}{" "}
@@ -333,41 +333,41 @@ export default function DailyInputScreen({ navigation, route }) {
               </Card.Content>
             </Card>
 
-            <Card style={styles.card}>
+            <Card style={[styles.card, { backgroundColor: colors.surface }]}>
               <Card.Content>
-                <Title style={styles.cardTitle}>Verbruik</Title>
+                <Title style={[styles.cardTitle, { color: colors.primary }]}>Verbruik</Title>
                 <TextInput
                   label="Voer verbruik (kg)"
                   value={feedConsumption}
                   onChangeText={setFeedConsumption}
                   keyboardType="numeric"
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: colors.surface }]}
                   mode="outlined"
-                  left={<TextInput.Icon icon="food-drumstick" />}
+                  left={<TextInput.Icon icon="food-drumstick" color={colors.onSurfaceVariant} />}
                 />
                 <TextInput
                   label="Water verbruik (liter)"
                   value={waterConsumption}
                   onChangeText={setWaterConsumption}
                   keyboardType="numeric"
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: colors.surface }]}
                   mode="outlined"
-                  left={<TextInput.Icon icon="water" />}
+                  left={<TextInput.Icon icon="water" color={colors.onSurfaceVariant} />}
                 />
               </Card.Content>
             </Card>
 
-            <Card style={styles.card}>
+            <Card style={[styles.card, { backgroundColor: colors.surface }]}>
               <Card.Content>
-                <Title style={styles.cardTitle}>Uitval</Title>
+                <Title style={[styles.cardTitle, { color: colors.primary }]}>Uitval</Title>
                 <TextInput
                   label="Aantal uitgevallen kippen"
                   value={casualties}
                   onChangeText={setCasualties}
                   keyboardType="numeric"
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: colors.surface }]}
                   mode="outlined"
-                  left={<TextInput.Icon icon="alert-circle" />}
+                  left={<TextInput.Icon icon="alert-circle" color={colors.onSurfaceVariant} />}
                 />
               </Card.Content>
             </Card>
@@ -376,7 +376,7 @@ export default function DailyInputScreen({ navigation, route }) {
               mode="contained"
               onPress={handleSave}
               style={styles.saveButton}
-              buttonColor="#2E7D32"
+              buttonColor={colors.primary}
               loading={isLoading}
               disabled={isLoading}
               icon="check"

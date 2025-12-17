@@ -19,8 +19,10 @@ import {
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import api from "../services/api";
 import stallService from "../services/stallService";
+import { useTheme } from "../context/ThemeContext";
 
 export default function FeedDeliveryScreen() {
+  const { isDarkMode, colors } = useTheme();
   const [deliveries, setDeliveries] = useState([]);
   const [stalls, setStalls] = useState([]);
   const [selectedStall, setSelectedStall] = useState(null);
@@ -129,13 +131,14 @@ export default function FeedDeliveryScreen() {
     if (stalls.length === 0) return null;
 
     return (
-      <View style={styles.stallSelector}>
+      <View style={[styles.stallSelector, { backgroundColor: colors.surface, borderBottomColor: isDarkMode ? '#333' : '#e0e0e0' }]}>
         {stalls.map((stall) => (
           <Chip
             key={stall.id}
             selected={selectedStall?.id === stall.id}
             onPress={() => handleStallChange(stall)}
-            style={styles.stallChip}
+            style={[styles.stallChip, selectedStall?.id === stall.id && { backgroundColor: colors.primary }]}
+            textStyle={{ color: selectedStall?.id === stall.id ? '#fff' : colors.onSurface }}
           >
             {stall.name}
           </Chip>
@@ -148,30 +151,30 @@ export default function FeedDeliveryScreen() {
     if (!inventory) return null;
 
     return (
-      <Card style={styles.inventoryCard}>
+      <Card style={[styles.inventoryCard, { backgroundColor: colors.surface }]}>
         <Card.Content>
           <View style={styles.inventoryHeader}>
-            <Icon name="warehouse" size={32} color="#2E7D32" />
-            <Text style={styles.inventoryTitle}>Voorraad Overzicht</Text>
+            <Icon name="warehouse" size={32} color={colors.primary} />
+            <Text style={[styles.inventoryTitle, { color: colors.primary }]}>Voorraad Overzicht</Text>
           </View>
           <View style={styles.inventoryStats}>
             <View style={styles.inventoryStat}>
-              <Text style={styles.inventoryValue}>
+              <Text style={[styles.inventoryValue, { color: colors.onSurface }]}>
                 {inventory.currentStock?.toFixed(0) || 0} kg
               </Text>
-              <Text style={styles.inventoryLabel}>Huidige voorraad</Text>
+              <Text style={[styles.inventoryLabel, { color: colors.onSurfaceVariant }]}>Huidige voorraad</Text>
             </View>
             <View style={styles.inventoryStat}>
-              <Text style={styles.inventoryValue}>
+              <Text style={[styles.inventoryValue, { color: colors.onSurface }]}>
                 {inventory.avgDailyConsumption?.toFixed(1) || 0} kg/dag
               </Text>
-              <Text style={styles.inventoryLabel}>Gemiddeld verbruik</Text>
+              <Text style={[styles.inventoryLabel, { color: colors.onSurfaceVariant }]}>Gemiddeld verbruik</Text>
             </View>
             <View style={styles.inventoryStat}>
-              <Text style={styles.inventoryValue}>
+              <Text style={[styles.inventoryValue, { color: colors.onSurface }]}>
                 {inventory.daysRemaining?.toFixed(0) || 0} dagen
               </Text>
-              <Text style={styles.inventoryLabel}>Voorraad resterend</Text>
+              <Text style={[styles.inventoryLabel, { color: colors.onSurfaceVariant }]}>Voorraad resterend</Text>
             </View>
           </View>
         </Card.Content>
@@ -180,12 +183,12 @@ export default function FeedDeliveryScreen() {
   };
 
   const renderDeliveryItem = ({ item }) => (
-    <Card style={styles.deliveryCard}>
+    <Card style={[styles.deliveryCard, { backgroundColor: colors.surface }]}>
       <Card.Content>
         <View style={styles.deliveryHeader}>
           <View style={styles.deliveryInfo}>
-            <Text style={styles.supplierName}>{item.supplier}</Text>
-            <Text style={styles.deliveryDate}>
+            <Text style={[styles.supplierName, { color: colors.onSurface }]}>{item.supplier}</Text>
+            <Text style={[styles.deliveryDate, { color: colors.onSurfaceVariant }]}>
               {new Date(item.deliveryTime).toLocaleDateString("nl-NL", {
                 day: "2-digit",
                 month: "short",
@@ -195,31 +198,31 @@ export default function FeedDeliveryScreen() {
               })}
             </Text>
           </View>
-          <Icon name="truck-delivery" size={32} color="#2E7D32" />
+          <Icon name="truck-delivery" size={32} color={colors.primary} />
         </View>
 
         <View style={styles.deliveryDetails}>
           <View style={styles.detailRow}>
-            <Icon name="weight-kilogram" size={20} color="#666" />
-            <Text style={styles.detailText}>{item.quantityKg} kg</Text>
+            <Icon name="weight-kilogram" size={20} color={colors.onSurfaceVariant} />
+            <Text style={[styles.detailText, { color: colors.onSurface }]}>{item.quantityKg} kg</Text>
           </View>
           {item.cost > 0 && (
             <View style={styles.detailRow}>
-              <Icon name="currency-eur" size={20} color="#666" />
-              <Text style={styles.detailText}>€{item.cost.toFixed(2)}</Text>
+              <Icon name="currency-eur" size={20} color={colors.onSurfaceVariant} />
+              <Text style={[styles.detailText, { color: colors.onSurface }]}>€{item.cost.toFixed(2)}</Text>
             </View>
           )}
         </View>
 
-        {item.notes && <Text style={styles.notes}>Notitie: {item.notes}</Text>}
+        {item.notes && <Text style={[styles.notes, { color: colors.onSurfaceVariant }]}>Notitie: {item.notes}</Text>}
       </Card.Content>
     </Card>
   );
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Voerleveringen</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: isDarkMode ? '#333' : '#e0e0e0' }]}>
+        <Text style={[styles.title, { color: colors.primary }]}>Voerleveringen</Text>
       </View>
 
       {renderStallSelector()}
@@ -235,15 +238,15 @@ export default function FeedDeliveryScreen() {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Icon name="truck-delivery-outline" size={64} color="#ccc" />
-            <Text style={styles.emptyText}>Geen leveringen gevonden</Text>
+            <Icon name="truck-delivery-outline" size={64} color={colors.onSurfaceVariant} />
+            <Text style={[styles.emptyText, { color: colors.onSurfaceVariant }]}>Geen leveringen gevonden</Text>
           </View>
         }
       />
 
       <FAB
         icon="plus"
-        style={styles.fab}
+        style={[styles.fab, { backgroundColor: colors.primary }]}
         onPress={() => setShowDialog(true)}
         label="Nieuwe Levering"
       />

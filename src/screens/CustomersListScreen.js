@@ -1,0 +1,382 @@
+import React, { useState, useEffect, useCallback } from "react";
+import {
+    View,
+    Text,
+    StyleSheet,
+    FlatList,
+    RefreshControl,
+    TouchableOpacity,
+    Alert,
+} from "react-native";
+import {
+    Card,
+    Button,
+    FAB,
+    Dialog,
+    Portal,
+    TextInput,
+    Searchbar,
+    ActivityIndicator,
+    Chip,
+} from "react-native-paper";
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import customerService from "../services/customerService";
+import { useTheme } from "../context/ThemeContext";
+
+export default function CustomersListScreen({ navigation }) {
+    const { isDarkMode, colors } = useTheme();
+    const [customers, setCustomers] = useState([]);
+    const [filteredCustomers, setFilteredCustomers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [showAddDialog, setShowAddDialog] = useState(false);
+    const [newCustomer, setNewCustomer] = useState({
+        name: "",
+        email: "",
+        phone: "",
+        address: "",
+        notes: "",
+    });
+
+    const loadCustomers = useCallback(async () => {
+        try {
+            setLoading(true);
+            const data = await customerService.listCustomers();
+            setCustomers(data);
+            setFilteredCustomers(data);
+        } catch (error) {
+            console.error("Error loading customers:", error);
+            Alert.alert("Fout", "Kon klanten niet ophalen");
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadCustomers();
+    }, [loadCustomers]);
+
+    useEffect(() => {
+        const unsubscribe = navigation.addListener("focus", () => {
+            loadCustomers();
+        });
+        return unsubscribe;
+    }, [navigation, loadCustomers]);
+
+    useEffect(() => {
+        if (searchQuery.trim() === "") {
+            setFilteredCustomers(customers);
+        } else {
+            const query = searchQuery.toLowerCase();
+            setFilteredCustomers(
+                customers.filter(
+                    (c) =>
+                        c.name.toLowerCase().includes(query) ||
+                        (c.email && c.email.toLowerCase().includes(query)) ||
+                        (c.phone && c.phone.includes(query))
+                )
+            );
+        }
+    }, [searchQuery, customers]);
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await loadCustomers();
+        setRefreshing(false);
+    }, [loadCustomers]);
+
+    const handleAddCustomer = async () => {
+        if (!newCustomer.name.trim()) {
+            Alert.alert("Fout", "Vul een naam in voor de klant");
+            return;
+        }
+
+        try {
+            await customerService.createCustomer(newCustomer);
+            setShowAddDialog(false);
+            setNewCustomer({ name: "", email: "", phone: "", address: "", notes: "" });
+            await loadCustomers();
+            Alert.alert("Succes", "Klant succesvol toegevoegd");
+        } catch (error) {
+            console.error("Error adding customer:", error);
+            Alert.alert("Fout", "Kon klant niet toevoegen");
+        }
+    };
+
+    const renderCustomerItem = ({ item }) => (
+        <Card
+            style={[styles.customerCard, { backgroundColor: colors.surface }]}
+            onPress={() => navigation.navigate("CustomerDetail", { customerId: item.id })}
+        >
+            <Card.Content>
+                <View style={styles.customerHeader}>
+                    <View style={styles.avatarContainer}>
+                        <Text style={styles.avatarText}>
+                            {item.name.charAt(0).toUpperCase()}
+                        </Text>
+                    </View>
+                    <View style={styles.customerInfo}>
+                        <Text style={[styles.customerName, { color: colors.onSurface }]}>
+                            {item.name}
+                        </Text>
+                        {item.email && (
+                            <Text style={[styles.customerEmail, { color: colors.onSurfaceVariant }]}>
+                                {item.email}
+                            </Text>
+                        )}
+                        {item.phone && (
+                            <Text style={[styles.customerPhone, { color: colors.onSurfaceVariant }]}>
+                                {item.phone}
+                            </Text>
+                        )}
+                    </View>
+                    <Icon name="chevron-right" size={24} color={colors.onSurfaceVariant} />
+                </View>
+            </Card.Content>
+        </Card>
+    );
+
+    const styles = StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: colors.background,
+        },
+        header: {
+            padding: 20,
+            backgroundColor: colors.primary,
+        },
+        headerTitle: {
+            fontSize: 24,
+            fontWeight: "bold",
+            color: "#fff",
+        },
+        headerSubtitle: {
+            fontSize: 14,
+            color: "rgba(255,255,255,0.8)",
+            marginTop: 4,
+        },
+        searchContainer: {
+            padding: 16,
+            paddingBottom: 8,
+        },
+        searchbar: {
+            backgroundColor: colors.surface,
+        },
+        listContent: {
+            padding: 16,
+            paddingTop: 8,
+        },
+        customerCard: {
+            marginBottom: 12,
+            elevation: 2,
+        },
+        customerHeader: {
+            flexDirection: "row",
+            alignItems: "center",
+        },
+        avatarContainer: {
+            width: 48,
+            height: 48,
+            borderRadius: 24,
+            backgroundColor: colors.primary,
+            justifyContent: "center",
+            alignItems: "center",
+            marginRight: 12,
+        },
+        avatarText: {
+            fontSize: 20,
+            fontWeight: "bold",
+            color: "#fff",
+        },
+        customerInfo: {
+            flex: 1,
+        },
+        customerName: {
+            fontSize: 16,
+            fontWeight: "bold",
+        },
+        customerEmail: {
+            fontSize: 14,
+            marginTop: 2,
+        },
+        customerPhone: {
+            fontSize: 14,
+            marginTop: 2,
+        },
+        emptyContainer: {
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            paddingVertical: 48,
+        },
+        emptyText: {
+            fontSize: 16,
+            color: colors.onSurfaceVariant,
+            marginTop: 12,
+        },
+        emptySubtext: {
+            fontSize: 14,
+            color: colors.onSurfaceVariant,
+            marginTop: 4,
+            textAlign: "center",
+        },
+        fab: {
+            position: "absolute",
+            right: 16,
+            bottom: 16,
+            backgroundColor: colors.primary,
+        },
+        loadingContainer: {
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+        },
+        dialog: {
+            backgroundColor: colors.surface,
+        },
+        dialogContent: {
+            paddingHorizontal: 24,
+        },
+        input: {
+            marginBottom: 12,
+            backgroundColor: colors.surface,
+        },
+    });
+
+    if (loading && customers.length === 0) {
+        return (
+            <View style={[styles.container, styles.loadingContainer]}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={{ color: colors.onSurface, marginTop: 12 }}>
+                    Klanten laden...
+                </Text>
+            </View>
+        );
+    }
+
+    return (
+        <View style={styles.container}>
+            <View style={styles.header}>
+                <Text style={styles.headerTitle}>Klanten</Text>
+                <Text style={styles.headerSubtitle}>
+                    {customers.length} klant{customers.length !== 1 ? "en" : ""}
+                </Text>
+            </View>
+
+            <View style={styles.searchContainer}>
+                <Searchbar
+                    placeholder="Zoek klanten..."
+                    onChangeText={setSearchQuery}
+                    value={searchQuery}
+                    style={styles.searchbar}
+                    iconColor={colors.onSurfaceVariant}
+                    inputStyle={{ color: colors.onSurface }}
+                    placeholderTextColor={colors.onSurfaceVariant}
+                />
+            </View>
+
+            <FlatList
+                data={filteredCustomers}
+                renderItem={renderCustomerItem}
+                keyExtractor={(item) => item.id.toString()}
+                contentContainerStyle={styles.listContent}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                }
+                ListEmptyComponent={
+                    <View style={styles.emptyContainer}>
+                        <Icon name="account-group-outline" size={64} color={colors.onSurfaceVariant} />
+                        <Text style={styles.emptyText}>
+                            {searchQuery ? "Geen klanten gevonden" : "Nog geen klanten"}
+                        </Text>
+                        <Text style={styles.emptySubtext}>
+                            {searchQuery
+                                ? "Probeer een andere zoekterm"
+                                : "Voeg je eerste klant toe met de + knop"}
+                        </Text>
+                    </View>
+                }
+            />
+
+            <FAB
+                icon="plus"
+                style={styles.fab}
+                onPress={() => setShowAddDialog(true)}
+                color="#fff"
+            />
+
+            <Portal>
+                <Dialog
+                    visible={showAddDialog}
+                    onDismiss={() => setShowAddDialog(false)}
+                    style={styles.dialog}
+                >
+                    <Dialog.Title style={{ color: colors.onSurface }}>
+                        Nieuwe Klant
+                    </Dialog.Title>
+                    <Dialog.ScrollArea>
+                        <View style={styles.dialogContent}>
+                            <TextInput
+                                label="Naam *"
+                                value={newCustomer.name}
+                                onChangeText={(text) =>
+                                    setNewCustomer({ ...newCustomer, name: text })
+                                }
+                                style={styles.input}
+                                mode="outlined"
+                            />
+                            <TextInput
+                                label="Email"
+                                value={newCustomer.email}
+                                onChangeText={(text) =>
+                                    setNewCustomer({ ...newCustomer, email: text })
+                                }
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                                style={styles.input}
+                                mode="outlined"
+                            />
+                            <TextInput
+                                label="Telefoon"
+                                value={newCustomer.phone}
+                                onChangeText={(text) =>
+                                    setNewCustomer({ ...newCustomer, phone: text })
+                                }
+                                keyboardType="phone-pad"
+                                style={styles.input}
+                                mode="outlined"
+                            />
+                            <TextInput
+                                label="Adres"
+                                value={newCustomer.address}
+                                onChangeText={(text) =>
+                                    setNewCustomer({ ...newCustomer, address: text })
+                                }
+                                multiline
+                                numberOfLines={2}
+                                style={styles.input}
+                                mode="outlined"
+                            />
+                            <TextInput
+                                label="Notities"
+                                value={newCustomer.notes}
+                                onChangeText={(text) =>
+                                    setNewCustomer({ ...newCustomer, notes: text })
+                                }
+                                multiline
+                                numberOfLines={2}
+                                style={styles.input}
+                                mode="outlined"
+                            />
+                        </View>
+                    </Dialog.ScrollArea>
+                    <Dialog.Actions>
+                        <Button onPress={() => setShowAddDialog(false)}>Annuleren</Button>
+                        <Button onPress={handleAddCustomer}>Toevoegen</Button>
+                    </Dialog.Actions>
+                </Dialog>
+            </Portal>
+        </View>
+    );
+}

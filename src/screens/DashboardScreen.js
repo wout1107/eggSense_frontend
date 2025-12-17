@@ -22,10 +22,12 @@ import stallService from "../services/stallService";
 import productionService from "../services/productionService";
 import salesService from "../services/salesService";
 import api from "../services/api";
+import { useTheme } from "../context/ThemeContext";
 
 const { width } = Dimensions.get("window");
 
 export default function DashboardScreen({ navigation }) {
+  const { isDarkMode, colors } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
   const [stalls, setStalls] = useState([]);
   const [selectedStall, setSelectedStall] = useState(null);
@@ -150,12 +152,12 @@ export default function DashboardScreen({ navigation }) {
   const renderStallSelector = () => {
     if (stalls.length === 0) {
       return (
-        <Card style={styles.warningCard}>
+        <Card style={[styles.warningCard, { backgroundColor: isDarkMode ? '#3E2723' : '#FFF3E0' }]}>
           <Card.Content>
             <View style={styles.warningContent}>
               <Icon name="alert-circle" size={48} color="#FF9800" />
-              <Text style={styles.warningTitle}>Geen Stallen Gevonden</Text>
-              <Text style={styles.warningText}>
+              <Text style={[styles.warningTitle, { color: colors.onSurface }]}>Geen Stallen Gevonden</Text>
+              <Text style={[styles.warningText, { color: colors.onSurfaceVariant }]}>
                 Maak eerst een stal aan om te beginnen met het bijhouden van
                 productiegegevens.
               </Text>
@@ -163,7 +165,7 @@ export default function DashboardScreen({ navigation }) {
                 mode="contained"
                 onPress={() => navigation.navigate("Settings")}
                 style={styles.warningButton}
-                buttonColor="#2E7D32"
+                buttonColor={colors.primary}
                 icon="cog"
               >
                 Naar Instellingen
@@ -182,7 +184,7 @@ export default function DashboardScreen({ navigation }) {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={styles.stallSelector}
+        style={[styles.stallSelector, { backgroundColor: colors.surface, borderBottomColor: isDarkMode ? '#333' : '#e0e0e0' }]}
         contentContainerStyle={styles.stallSelectorContent}
       >
         {stalls.map((stall) => (
@@ -192,9 +194,9 @@ export default function DashboardScreen({ navigation }) {
             onPress={() => handleStallChange(stall)}
             style={[
               styles.stallChip,
-              selectedStall?.id === stall.id && styles.stallChipSelected,
+              selectedStall?.id === stall.id && { backgroundColor: colors.primary },
             ]}
-            textStyle={styles.stallChipText}
+            textStyle={[styles.stallChipText, { color: selectedStall?.id === stall.id ? '#fff' : colors.onSurface }]}
             mode={selectedStall?.id === stall.id ? "flat" : "outlined"}
           >
             {stall.name}
@@ -213,15 +215,15 @@ export default function DashboardScreen({ navigation }) {
       totalChickens > 0 ? (activeChickens / totalChickens) * 100 : 0;
 
     return (
-      <Card style={styles.card}>
+      <Card style={[styles.card, { backgroundColor: colors.surface }]}>
         <Card.Content>
           <View style={styles.stallHeader}>
             <View style={styles.stallHeaderLeft}>
-              <Icon name="barn" size={32} color="#2E7D32" />
+              <Icon name="barn" size={32} color={colors.primary} />
               <View style={styles.stallInfo}>
-                <Text style={styles.stallName}>{selectedStall.name}</Text>
+                <Text style={[styles.stallName, { color: colors.primary }]}>{selectedStall.name}</Text>
                 {selectedStall.breed && (
-                  <Text style={styles.stallBreed}>{selectedStall.breed}</Text>
+                  <Text style={[styles.stallBreed, { color: colors.onSurfaceVariant }]}>{selectedStall.breed}</Text>
                 )}
               </View>
             </View>
@@ -236,19 +238,19 @@ export default function DashboardScreen({ navigation }) {
             )}
           </View>
 
-          <View style={styles.capacitySection}>
+          <View style={[styles.capacitySection, { backgroundColor: isDarkMode ? '#1E1E1E' : '#f8f9fa' }]}>
             <View style={styles.capacityHeader}>
-              <Text style={styles.capacityLabel}>Bezetting</Text>
-              <Text style={styles.capacityValue}>
+              <Text style={[styles.capacityLabel, { color: colors.onSurfaceVariant }]}>Bezetting</Text>
+              <Text style={[styles.capacityValue, { color: colors.primary }]}>
                 {activeChickens} / {totalChickens} kippen
               </Text>
             </View>
             <ProgressBar
               progress={totalChickens > 0 ? activeChickens / totalChickens : 0}
               color={utilizationPercent > 90 ? "#4CAF50" : "#FF9800"}
-              style={styles.progressBar}
+              style={[styles.progressBar, { backgroundColor: isDarkMode ? '#333' : '#e0e0e0' }]}
             />
-            <Text style={styles.capacityPercentage}>
+            <Text style={[styles.capacityPercentage, { color: colors.onSurfaceVariant }]}>
               {utilizationPercent.toFixed(1)}% bezet
             </Text>
           </View>
@@ -262,21 +264,23 @@ export default function DashboardScreen({ navigation }) {
     const hasData = todayProduction !== null;
 
     return (
-      <Card style={styles.card}>
+      <Card style={[styles.card, { backgroundColor: colors.surface }]}>
         <Card.Title
           title="Vandaag"
+          titleStyle={{ color: colors.onSurface }}
           subtitle={new Date().toLocaleDateString("nl-NL", {
             weekday: "long",
             day: "numeric",
             month: "long",
           })}
-          left={(props) => <Icon {...props} name="calendar-today" size={24} />}
+          subtitleStyle={{ color: colors.onSurfaceVariant }}
+          left={(props) => <Icon {...props} name="calendar-today" size={24} color={colors.onSurfaceVariant} />}
         />
         <Card.Content>
           {!hasData ? (
             <View style={styles.noDataContainer}>
-              <Icon name="information-outline" size={48} color="#ccc" />
-              <Text style={styles.noDataText}>
+              <Icon name="information-outline" size={48} color={colors.onSurfaceVariant} />
+              <Text style={[styles.noDataText, { color: colors.onSurfaceVariant }]}>
                 Nog geen gegevens ingevoerd voor vandaag
               </Text>
               <Button
@@ -296,30 +300,30 @@ export default function DashboardScreen({ navigation }) {
             <View style={styles.statsGrid}>
               <View style={styles.statBox}>
                 <Icon name="egg" size={32} color="#FF9800" />
-                <Text style={styles.statValue}>{todayEggs}</Text>
-                <Text style={styles.statLabel}>Eieren</Text>
+                <Text style={[styles.statValue, { color: colors.onSurface }]}>{todayEggs}</Text>
+                <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Eieren</Text>
               </View>
               <View style={styles.statBox}>
                 <Icon name="food-drumstick" size={32} color="#2196F3" />
-                <Text style={styles.statValue}>
+                <Text style={[styles.statValue, { color: colors.onSurface }]}>
                   {todayProduction.feedKg || 0}
                 </Text>
-                <Text style={styles.statLabel}>Voer (kg)</Text>
+                <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Voer (kg)</Text>
               </View>
               <View style={styles.statBox}>
                 <Icon name="water" size={32} color="#00BCD4" />
-                <Text style={styles.statValue}>
+                <Text style={[styles.statValue, { color: colors.onSurface }]}>
                   {todayProduction.waterLiters || 0}
                 </Text>
-                <Text style={styles.statLabel}>Water (L)</Text>
+                <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Water (L)</Text>
               </View>
               {todayProduction.mortality > 0 && (
                 <View style={styles.statBox}>
                   <Icon name="alert-circle" size={32} color="#F44336" />
-                  <Text style={styles.statValue}>
+                  <Text style={[styles.statValue, { color: colors.onSurface }]}>
                     {todayProduction.mortality}
                   </Text>
-                  <Text style={styles.statLabel}>Uitval</Text>
+                  <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Uitval</Text>
                 </View>
               )}
             </View>
@@ -452,8 +456,8 @@ export default function DashboardScreen({ navigation }) {
             backgroundColor: isCritical
               ? "#FFEBEE"
               : isLow
-              ? "#FFF3E0"
-              : "#E8F5E9",
+                ? "#FFF3E0"
+                : "#E8F5E9",
           },
         ]}
       >
@@ -469,8 +473,8 @@ export default function DashboardScreen({ navigation }) {
                 {isCritical
                   ? "Kritiek Voerniveau!"
                   : isLow
-                  ? "Lage Voervoorraad"
-                  : "Voervoorraad Normaal"}
+                    ? "Lage Voervoorraad"
+                    : "Voervoorraad Normaal"}
               </Text>
               <Text style={styles.alertDescription}>
                 Nog {currentStock.toFixed(0)} kg voer beschikbaar (circa{" "}
@@ -535,16 +539,16 @@ export default function DashboardScreen({ navigation }) {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2E7D32" />
-        <Text style={styles.loadingText}>Dashboard laden...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.onSurfaceVariant }]}>Dashboard laden...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.primary }]}>
         <View style={styles.headerLeft}>
           <Text style={styles.greeting}>Dashboard</Text>
           <Text style={styles.date}>

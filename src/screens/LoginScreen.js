@@ -12,8 +12,10 @@ import {
 import { TextInput, Card } from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import authService from "../services/authService";
+import { useTheme } from "../context/ThemeContext";
 
 export default function LoginScreen({ navigation }) {
+  const { isDarkMode, colors } = useTheme();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -47,30 +49,31 @@ export default function LoginScreen({ navigation }) {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
     >
       <View style={styles.content}>
         <View style={styles.logoContainer}>
-          <View style={styles.logoCircle}>
+          <View style={[styles.logoCircle, { backgroundColor: colors.primary }]}>
             <Icon name="egg" size={60} color="#fff" />
           </View>
-          <Text style={styles.appName}>EggSense</Text>
-          <Text style={styles.tagline}>Professioneel Kippenstal Beheer</Text>
+          <Text style={[styles.appName, { color: colors.primary }]}>EggSense</Text>
+          <Text style={[styles.tagline, { color: colors.onSurfaceVariant }]}>Professioneel Kippenstal Beheer</Text>
         </View>
 
-        <Card style={styles.card}>
+        <Card style={[styles.card, { backgroundColor: colors.surface }]}>
           <Card.Content>
-            <Text style={styles.welcomeText}>Welkom terug!</Text>
-            <Text style={styles.subtitle}>Log in om door te gaan</Text>
+            <Text style={[styles.welcomeText, { color: colors.onSurface }]}>Welkom terug!</Text>
+            <Text style={[styles.subtitle, { color: colors.onSurfaceVariant }]}>Log in om door te gaan</Text>
 
             <TextInput
               label="Gebruikersnaam"
               value={username}
               onChangeText={setUsername}
               autoCapitalize="none"
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.surface }]}
               mode="outlined"
-              left={<TextInput.Icon icon="account" />}
+              theme={{ colors: { primary: colors.primary, text: colors.onSurface } }}
+              left={<TextInput.Icon icon="account" color={colors.onSurfaceVariant} />}
             />
 
             <TextInput
@@ -78,13 +81,15 @@ export default function LoginScreen({ navigation }) {
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.surface }]}
               mode="outlined"
-              left={<TextInput.Icon icon="lock" />}
+              theme={{ colors: { primary: colors.primary, text: colors.onSurface } }}
+              left={<TextInput.Icon icon="lock" color={colors.onSurfaceVariant} />}
               right={
                 <TextInput.Icon
                   icon={showPassword ? "eye-off" : "eye"}
                   onPress={() => setShowPassword(!showPassword)}
+                  color={colors.onSurfaceVariant}
                 />
               }
             />
@@ -92,7 +97,7 @@ export default function LoginScreen({ navigation }) {
             <TouchableOpacity
               onPress={handleLogin}
               disabled={loading}
-              style={[styles.loginButton, loading && styles.loginButtonDisabled]}
+              style={[styles.loginButton, { backgroundColor: colors.primary }, loading && styles.loginButtonDisabled]}
               activeOpacity={0.8}
             >
               {loading ? (
@@ -105,7 +110,7 @@ export default function LoginScreen({ navigation }) {
         </Card>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>
+          <Text style={[styles.footerText, { color: colors.onSurfaceVariant }]}>
             Nog geen account? Neem contact op met je beheerder
           </Text>
         </View>

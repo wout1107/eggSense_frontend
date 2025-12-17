@@ -2,7 +2,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // REPLACE WITH YOUR ACTUAL IP ADDRESS FROM ipconfig
-const API_BASE_URL = "http://192.168.0.202:8080/api"; // CHANGE THIS!
+const API_BASE_URL = "http://192.168.0.222:8080/api"; // Updated IP
 
 const api = axios.create({
   baseURL: API_BASE_URL,
