@@ -197,16 +197,15 @@ export default function SettingsScreen({ navigation }) {
         style: "destructive",
         onPress: async () => {
           try {
+            // Call logout service - this clears storage and calls backend
             await authService.logout();
-            await AsyncStorage.removeItem("token");
-            await AsyncStorage.removeItem("user");
-            navigation.reset({
-              index: 0,
-              routes: [{ name: "Welcome" }],
-            });
+            // App.js will detect the auth state change and navigate automatically
           } catch (error) {
             console.error("Error logging out:", error);
-            Alert.alert("Fout", "Kon niet uitloggen");
+            // Even if backend fails, try to clear local storage
+            await AsyncStorage.removeItem("token");
+            await AsyncStorage.removeItem("user");
+            await AsyncStorage.removeItem("refreshToken");
           }
         },
       },
@@ -381,13 +380,20 @@ export default function SettingsScreen({ navigation }) {
         {/* App Settings */}
         {selectedCategory === "app" && (
           <>
-            {/* IMPORTANT: Theme & Preferences Card - Exam Requirement */}
+            {/* Theme & Preferences Card */}
             <Card style={dynamicStyles.card}>
               <Card.Content>
                 <Title style={dynamicStyles.cardTitle}>Weergave & Voorkeuren</Title>
 
-                {/* Toggle 1: Dark/Light Theme */}
-                <View style={styles.settingRow}>
+                {/* Setting 1: Dark/Light Theme */}
+                <View
+                  style={styles.settingRow}
+                  accessible={true}
+                  accessibilityLabel="Donker thema instelling"
+                  accessibilityHint="Dubbelklik om te schakelen tussen licht en donker thema"
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: isDarkMode }}
+                >
                   <View style={styles.settingInfo}>
                     <List.Icon icon={isDarkMode ? "weather-night" : "weather-sunny"} color={colors.primary} />
                     <View style={styles.settingText}>
@@ -402,70 +408,91 @@ export default function SettingsScreen({ navigation }) {
                     onValueChange={toggleTheme}
                     thumbColor={isDarkMode ? colors.primary : "#f4f3f4"}
                     trackColor={{ false: "#e0e0e0", true: colors.primaryContainer }}
+                    accessibilityLabel="Schakel donker thema"
                   />
                 </View>
 
                 <Divider style={styles.settingDivider} />
 
-                {/* Toggle 2: Low Stock Notifications */}
-                <View style={styles.settingRow}>
+                {/* Setting 2: Default Stal Selection */}
+                <View
+                  style={styles.settingRow}
+                  accessible={true}
+                  accessibilityLabel="Standaard stal instelling"
+                  accessibilityHint="Selecteer welke stal standaard wordt geladen"
+                >
                   <View style={styles.settingInfo}>
-                    <List.Icon icon="bell-alert" color={colors.primary} />
+                    <List.Icon icon="barn" color={colors.primary} />
                     <View style={styles.settingText}>
-                      <Text style={[styles.settingTitle, dynamicStyles.text]}>Voorraad Meldingen</Text>
+                      <Text style={[styles.settingTitle, dynamicStyles.text]}>Standaard Stal</Text>
                       <Text style={[styles.settingDescription, dynamicStyles.subText]}>
-                        Ontvang meldingen bij lage voervoorraad
+                        Selecteer de stal die standaard wordt getoond
                       </Text>
                     </View>
                   </View>
-                  <Switch
-                    value={settings.lowStockAlerts}
-                    onValueChange={(value) => updateSetting('lowStockAlerts', value)}
-                    thumbColor={settings.lowStockAlerts ? colors.primary : "#f4f3f4"}
-                    trackColor={{ false: "#e0e0e0", true: colors.primaryContainer }}
-                  />
+                </View>
+                <View style={styles.stallChipsContainer}>
+                  <Chip
+                    mode={settings.defaultStallId === null ? "flat" : "outlined"}
+                    selected={settings.defaultStallId === null}
+                    onPress={() => updateSetting('defaultStallId', null)}
+                    style={styles.stallChip}
+                    accessibilityLabel="Geen standaard stal"
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: settings.defaultStallId === null }}
+                  >
+                    Geen
+                  </Chip>
+                  {stalls.map((stall) => (
+                    <Chip
+                      key={stall.id}
+                      mode={settings.defaultStallId === stall.id ? "flat" : "outlined"}
+                      selected={settings.defaultStallId === stall.id}
+                      onPress={() => updateSetting('defaultStallId', stall.id)}
+                      style={styles.stallChip}
+                      accessibilityLabel={`Stal ${stall.name} als standaard instellen`}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: settings.defaultStallId === stall.id }}
+                    >
+                      {stall.name}
+                    </Chip>
+                  ))}
                 </View>
 
                 <Divider style={styles.settingDivider} />
 
-                {/* Toggle 3: Data Saver Mode (WiFi Only Images) */}
-                <View style={styles.settingRow}>
+                {/* Setting 3: Low Stock Alert Threshold */}
+                <View
+                  style={styles.settingRow}
+                  accessible={true}
+                  accessibilityLabel={`Voervoorraad waarschuwing bij ${settings.lowStockAlertDays} dagen`}
+                  accessibilityHint="Stel in bij hoeveel dagen voervoorraad een waarschuwing wordt getoond"
+                >
                   <View style={styles.settingInfo}>
-                    <List.Icon icon="wifi" color={colors.primary} />
+                    <List.Icon icon="alert-circle" color={colors.primary} />
                     <View style={styles.settingText}>
-                      <Text style={[styles.settingTitle, dynamicStyles.text]}>Databesparing</Text>
+                      <Text style={[styles.settingTitle, dynamicStyles.text]}>Voorraad Waarschuwing</Text>
                       <Text style={[styles.settingDescription, dynamicStyles.subText]}>
-                        Afbeeldingen alleen via WiFi laden
+                        Toon waarschuwing bij minder dan {settings.lowStockAlertDays} dagen voer
                       </Text>
                     </View>
                   </View>
-                  <Switch
-                    value={settings.wifiOnlyImages}
-                    onValueChange={(value) => updateSetting('wifiOnlyImages', value)}
-                    thumbColor={settings.wifiOnlyImages ? colors.primary : "#f4f3f4"}
-                    trackColor={{ false: "#e0e0e0", true: colors.primaryContainer }}
-                  />
                 </View>
-
-                <Divider style={styles.settingDivider} />
-
-                {/* Toggle 4: Notifications Enabled */}
-                <View style={styles.settingRow}>
-                  <View style={styles.settingInfo}>
-                    <List.Icon icon="bell-outline" color={colors.primary} />
-                    <View style={styles.settingText}>
-                      <Text style={[styles.settingTitle, dynamicStyles.text]}>Push Notificaties</Text>
-                      <Text style={[styles.settingDescription, dynamicStyles.subText]}>
-                        Ontvang push notificaties
-                      </Text>
-                    </View>
-                  </View>
-                  <Switch
-                    value={settings.notificationsEnabled}
-                    onValueChange={(value) => updateSetting('notificationsEnabled', value)}
-                    thumbColor={settings.notificationsEnabled ? colors.primary : "#f4f3f4"}
-                    trackColor={{ false: "#e0e0e0", true: colors.primaryContainer }}
-                  />
+                <View style={styles.thresholdContainer}>
+                  {[3, 5, 7, 10, 14].map((days) => (
+                    <Chip
+                      key={days}
+                      mode={settings.lowStockAlertDays === days ? "flat" : "outlined"}
+                      selected={settings.lowStockAlertDays === days}
+                      onPress={() => updateSetting('lowStockAlertDays', days)}
+                      style={styles.thresholdChip}
+                      accessibilityLabel={`${days} dagen voorraad drempel`}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: settings.lowStockAlertDays === days }}
+                    >
+                      {days} dagen
+                    </Chip>
+                  ))}
                 </View>
               </Card.Content>
             </Card>
@@ -479,6 +506,7 @@ export default function SettingsScreen({ navigation }) {
                   titleStyle={dynamicStyles.text}
                   descriptionStyle={dynamicStyles.subText}
                   left={(props) => <List.Icon {...props} icon="information" color={colors.primary} />}
+                  accessibilityLabel="App versie 1.0.0"
                 />
                 <Divider />
                 <List.Item
@@ -487,6 +515,7 @@ export default function SettingsScreen({ navigation }) {
                   titleStyle={dynamicStyles.text}
                   descriptionStyle={dynamicStyles.subText}
                   left={(props) => <List.Icon {...props} icon="code-tags" color={colors.primary} />}
+                  accessibilityLabel="Ontwikkeld door EggSense Solutions"
                 />
                 <Divider />
                 <List.Item
@@ -501,6 +530,9 @@ export default function SettingsScreen({ navigation }) {
                       "Voor vragen of problemen:\n\nEmail: support@eggsense.com\nTelefoon: +32 123 45 67 89"
                     )
                   }
+                  accessibilityLabel="Contact support via email"
+                  accessibilityHint="Dubbelklik voor contactgegevens"
+                  accessibilityRole="button"
                 />
               </Card.Content>
             </Card>
@@ -508,7 +540,10 @@ export default function SettingsScreen({ navigation }) {
             <Card style={dynamicStyles.card}>
               <Card.Content>
                 <Title style={dynamicStyles.cardTitle}>Over EggSense</Title>
-                <Text style={[styles.aboutText, dynamicStyles.subText]}>
+                <Text
+                  style={[styles.aboutText, dynamicStyles.subText]}
+                  accessibilityRole="text"
+                >
                   EggSense is een professioneel management systeem voor
                   pluimveebedrijven. Het helpt u bij het bijhouden van
                   productie, verkoop en voorraden.
@@ -527,6 +562,8 @@ export default function SettingsScreen({ navigation }) {
                       "Uw gegevens worden veilig opgeslagen en nooit gedeeld met derden."
                     )
                   }
+                  accessibilityLabel="Privacy beleid bekijken"
+                  accessibilityRole="button"
                 />
                 <Divider />
                 <List.Item
@@ -544,6 +581,8 @@ export default function SettingsScreen({ navigation }) {
                       "Algemene voorwaarden worden binnenkort beschikbaar."
                     )
                   }
+                  accessibilityLabel="Algemene voorwaarden bekijken"
+                  accessibilityRole="button"
                 />
               </Card.Content>
             </Card>
@@ -897,5 +936,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#1976D2",
     flex: 1,
+  },
+  // New styles for settings chips
+  stallChipsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    paddingHorizontal: 4,
+    paddingBottom: 8,
+  },
+  stallChip: {
+    marginBottom: 4,
+  },
+  thresholdContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    paddingHorizontal: 4,
+    paddingBottom: 8,
+  },
+  thresholdChip: {
+    marginBottom: 4,
   },
 });

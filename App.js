@@ -65,22 +65,34 @@ function MainTabs() {
       <Tab.Screen
         name="Dashboard"
         component={DashboardScreen}
-        options={{ title: "Dashboard" }}
+        options={{
+          title: "Dashboard",
+          tabBarAccessibilityLabel: "Dashboard tab, overzicht van productie en statistieken",
+        }}
       />
       <Tab.Screen
         name="Sales"
         component={SalesScreen}
-        options={{ title: "Verkoop" }}
+        options={{
+          title: "Verkoop",
+          tabBarAccessibilityLabel: "Verkoop tab, beheer orders en verkopen",
+        }}
       />
       <Tab.Screen
         name="Customers"
         component={CustomersListScreen}
-        options={{ title: "Klanten" }}
+        options={{
+          title: "Klanten",
+          tabBarAccessibilityLabel: "Klanten tab, bekijk en beheer klantenlijst",
+        }}
       />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
-        options={{ title: "Profiel" }}
+        options={{
+          title: "Profiel",
+          tabBarAccessibilityLabel: "Profiel tab, accountinstellingen en uitloggen",
+        }}
       />
     </Tab.Navigator>
   );
@@ -90,6 +102,12 @@ function AppContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { theme, isDarkMode, colors } = useTheme();
+  const isAuthenticatedRef = React.useRef(false);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    isAuthenticatedRef.current = isAuthenticated;
+  }, [isAuthenticated]);
 
   // Ensure proper root height on web
   useEffect(() => {
@@ -107,20 +125,13 @@ function AppContent() {
     }
   }, []);
 
-  useEffect(() => {
-    checkAuthentication();
-
-    // Add listener for auth changes
-    const interval = setInterval(checkAuthentication, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const checkAuthentication = async () => {
+  const checkAuthentication = React.useCallback(async () => {
     try {
       const user = await AsyncStorage.getItem("user");
       const newAuthState = !!user;
 
-      if (newAuthState !== isAuthenticated) {
+      // Use ref to get current value, avoiding stale closure
+      if (newAuthState !== isAuthenticatedRef.current) {
         setIsAuthenticated(newAuthState);
       }
     } catch (error) {
@@ -131,7 +142,15 @@ function AppContent() {
         setIsLoading(false);
       }
     }
-  };
+  }, [isLoading]);
+
+  useEffect(() => {
+    checkAuthentication();
+
+    // Add listener for auth changes
+    const interval = setInterval(checkAuthentication, 500); // Check more frequently
+    return () => clearInterval(interval);
+  }, [checkAuthentication]);
 
   if (isLoading) {
     return (

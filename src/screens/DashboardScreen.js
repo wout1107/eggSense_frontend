@@ -8,6 +8,7 @@ import {
   Dimensions,
   Alert,
   ActivityIndicator,
+  TouchableOpacity,
 } from "react-native";
 import {
   Card,
@@ -19,13 +20,14 @@ import {
 } from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BarChart } from "react-native-chart-kit";
 import stallService from "../services/stallService";
 import productionService from "../services/productionService";
 import salesService from "../services/salesService";
 import api from "../services/api";
 import { useTheme } from "../context/ThemeContext";
 
-const { width } = Dimensions.get("window");
+const { width: screenWidth } = Dimensions.get("window");
 
 export default function DashboardScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -38,6 +40,7 @@ export default function DashboardScreen({ navigation }) {
   const [weekStats, setWeekStats] = useState(null);
   const [inventory, setInventory] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [selectedChartData, setSelectedChartData] = useState(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -338,15 +341,16 @@ export default function DashboardScreen({ navigation }) {
   const renderWeeklyChart = () => {
     if (weeklyProduction.length === 0) {
       return (
-        <Card style={styles.card}>
+        <Card style={[styles.card, { backgroundColor: colors.surface }]}>
           <Card.Title
             title="Week Overzicht"
-            left={(props) => <Icon {...props} name="chart-line" size={24} />}
+            titleStyle={{ color: colors.onSurface }}
+            left={(props) => <Icon {...props} name="chart-line" size={24} color={colors.onSurfaceVariant} />}
           />
           <Card.Content>
             <View style={styles.noDataContainer}>
-              <Icon name="chart-line-variant" size={48} color="#ccc" />
-              <Text style={styles.noDataText}>
+              <Icon name="chart-line-variant" size={48} color={colors.onSurfaceVariant} />
+              <Text style={[styles.noDataText, { color: colors.onSurfaceVariant }]}>
                 Geen productiegegevens beschikbaar voor deze week
               </Text>
             </View>
@@ -355,81 +359,138 @@ export default function DashboardScreen({ navigation }) {
       );
     }
 
-    const maxValue = Math.max(
-      ...weeklyProduction.map((d) => getTotalEggs(d)),
-      1
-    );
+    // Prepare data for chart
+    const chartLabels = weeklyProduction.map((item) => {
+      const date = new Date(item.recordDate);
+      return ["Zo", "Ma", "Di", "Wo", "Do", "Vr", "Za"][date.getDay()];
+    });
+
+    const chartData = weeklyProduction.map((item) => getTotalEggs(item));
+
+    const chartConfig = {
+      backgroundColor: isDarkMode ? colors.surface : "#ffffff",
+      backgroundGradientFrom: isDarkMode ? colors.surface : "#ffffff",
+      backgroundGradientTo: isDarkMode ? colors.surface : "#ffffff",
+      decimalPlaces: 0,
+      color: (opacity = 1) => isDarkMode ? `rgba(76, 175, 80, ${opacity})` : `rgba(46, 125, 50, ${opacity})`,
+      labelColor: (opacity = 1) => isDarkMode ? `rgba(255, 255, 255, ${opacity})` : `rgba(0, 0, 0, ${opacity})`,
+      style: {
+        borderRadius: 16,
+      },
+      propsForBackgroundLines: {
+        strokeDasharray: "",
+        stroke: isDarkMode ? "#333" : "#e0e0e0",
+      },
+      barPercentage: 0.7,
+    };
+
+    const handleBarPress = (data) => {
+      if (data && data.index !== undefined) {
+        const item = weeklyProduction[data.index];
+        const date = new Date(item.recordDate);
+        setSelectedChartData({
+          day: ["Zondag", "Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag"][date.getDay()],
+          date: `${date.getDate()}/${date.getMonth() + 1}`,
+          total: getTotalEggs(item),
+          small: item.eggsSmall || 0,
+          medium: item.eggsMedium || 0,
+          large: item.eggsLarge || 0,
+          feed: item.feedKg || 0,
+          water: item.waterLiters || 0,
+        });
+      }
+    };
 
     return (
-      <Card style={styles.card}>
+      <Card style={[styles.card, { backgroundColor: colors.surface }]}>
         <Card.Title
           title="Week Overzicht"
-          subtitle={`${weeklyProduction.length} dagen gegevens`}
-          left={(props) => <Icon {...props} name="chart-line" size={24} />}
+          titleStyle={{ color: colors.onSurface }}
+          subtitle={`${weeklyProduction.length} dagen gegevens - Tik op een balk voor details`}
+          subtitleStyle={{ color: colors.onSurfaceVariant }}
+          left={(props) => <Icon {...props} name="chart-bar" size={24} color={colors.primary} />}
         />
         <Card.Content>
-          <View style={styles.chartContainer}>
-            {weeklyProduction.map((item, index) => {
-              const total = getTotalEggs(item);
-              const height = maxValue > 0 ? (total / maxValue) * 100 : 0;
-              const date = new Date(item.recordDate);
-              const dayName = ["Zo", "Ma", "Di", "Wo", "Do", "Vr", "Za"][
-                date.getDay()
-              ];
-              const isToday =
-                date.toISOString().split("T")[0] ===
-                new Date().toISOString().split("T")[0];
-
-              return (
-                <View key={index} style={styles.barContainer}>
-                  <View
-                    style={[
-                      styles.bar,
-                      {
-                        height: Math.max(height, 2),
-                        backgroundColor: isToday ? "#2E7D32" : "#4CAF50",
-                      },
-                    ]}
-                  >
-                    {height > 20 && (
-                      <Text style={styles.barValueInside}>{total}</Text>
-                    )}
-                  </View>
-                  {height <= 20 && total > 0 && (
-                    <Text style={styles.barValueOutside}>{total}</Text>
-                  )}
-                  <Text
-                    style={[styles.barLabel, isToday && styles.barLabelToday]}
-                  >
-                    {dayName}
-                  </Text>
-                  <Text style={styles.barDate}>
-                    {date.getDate()}/{date.getMonth() + 1}
+          {/* Interactive Tooltip */}
+          {selectedChartData && (
+            <TouchableOpacity
+              style={[styles.chartTooltip, { backgroundColor: isDarkMode ? '#2E7D32' : '#E8F5E9', borderColor: colors.primary }]}
+              onPress={() => setSelectedChartData(null)}
+              accessibilityLabel="Sluit detail weergave"
+              accessibilityHint="Tik om te sluiten"
+            >
+              <View style={styles.tooltipHeader}>
+                <Text style={[styles.tooltipTitle, { color: isDarkMode ? '#fff' : colors.primary }]}>
+                  {selectedChartData.day} ({selectedChartData.date})
+                </Text>
+                <Icon name="close" size={18} color={isDarkMode ? '#fff' : colors.primary} />
+              </View>
+              <View style={styles.tooltipContent}>
+                <View style={styles.tooltipRow}>
+                  <Icon name="egg" size={16} color="#FF9800" />
+                  <Text style={[styles.tooltipText, { color: isDarkMode ? '#fff' : '#333' }]}>
+                    Totaal: <Text style={styles.tooltipValue}>{selectedChartData.total}</Text> eieren
                   </Text>
                 </View>
-              );
-            })}
-          </View>
+                <View style={styles.tooltipDivider} />
+                <View style={styles.tooltipBreakdown}>
+                  <Text style={[styles.tooltipSmall, { color: isDarkMode ? '#ddd' : '#666' }]}>
+                    Klein: {selectedChartData.small} | Medium: {selectedChartData.medium} | Groot: {selectedChartData.large}
+                  </Text>
+                </View>
+                {(selectedChartData.feed > 0 || selectedChartData.water > 0) && (
+                  <View style={styles.tooltipBreakdown}>
+                    <Text style={[styles.tooltipSmall, { color: isDarkMode ? '#ddd' : '#666' }]}>
+                      Voer: {selectedChartData.feed}kg | Water: {selectedChartData.water}L
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+          )}
+
+          {/* Interactive Bar Chart */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <BarChart
+              data={{
+                labels: chartLabels,
+                datasets: [{ data: chartData }],
+              }}
+              width={Math.max(screenWidth - 64, chartLabels.length * 50)}
+              height={220}
+              chartConfig={chartConfig}
+              style={styles.interactiveChart}
+              fromZero
+              showValuesOnTopOfBars
+              withInnerLines={true}
+              onDataPointClick={handleBarPress}
+              accessibilityLabel="Weekproductie grafiek"
+            />
+          </ScrollView>
+
+          <Text style={[styles.chartHint, { color: colors.onSurfaceVariant }]}>
+            👆 Tik op een balk voor gedetailleerde informatie
+          </Text>
 
           {weekStats && (
             <>
               <Divider style={styles.divider} />
               <View style={styles.weekStatsContainer}>
                 <View style={styles.weekStatItem}>
-                  <Text style={styles.weekStatLabel}>Totaal Eieren</Text>
-                  <Text style={styles.weekStatValue}>
+                  <Text style={[styles.weekStatLabel, { color: colors.onSurfaceVariant }]}>Totaal Eieren</Text>
+                  <Text style={[styles.weekStatValue, { color: colors.primary }]}>
                     {weekStats.totalEggs}
                   </Text>
                 </View>
                 <View style={styles.weekStatItem}>
-                  <Text style={styles.weekStatLabel}>Gemiddeld/Dag</Text>
-                  <Text style={styles.weekStatValue}>
+                  <Text style={[styles.weekStatLabel, { color: colors.onSurfaceVariant }]}>Gemiddeld/Dag</Text>
+                  <Text style={[styles.weekStatValue, { color: colors.primary }]}>
                     {weekStats.avgEggsPerDay.toFixed(0)}
                   </Text>
                 </View>
                 <View style={styles.weekStatItem}>
-                  <Text style={styles.weekStatLabel}>Totaal Voer</Text>
-                  <Text style={styles.weekStatValue}>
+                  <Text style={[styles.weekStatLabel, { color: colors.onSurfaceVariant }]}>Totaal Voer</Text>
+                  <Text style={[styles.weekStatValue, { color: colors.primary }]}>
                     {weekStats.totalFeed.toFixed(0)} kg
                   </Text>
                 </View>
@@ -490,7 +551,11 @@ export default function DashboardScreen({ navigation }) {
   };
 
   const renderQuickActions = () => (
-    <Card style={styles.card}>
+    <Card
+      style={styles.card}
+      accessible={true}
+      accessibilityLabel="Snelle acties sectie"
+    >
       <Card.Title
         title="Snelle Acties"
         left={(props) => <Icon {...props} name="lightning-bolt" size={24} />}
@@ -507,6 +572,8 @@ export default function DashboardScreen({ navigation }) {
             }
             style={styles.actionButton}
             buttonColor="#2E7D32"
+            accessibilityLabel="Dagelijkse invoer"
+            accessibilityHint="Ga naar het scherm voor dagelijkse productie invoer"
           >
             Dagelijkse Invoer
           </Button>
@@ -515,6 +582,8 @@ export default function DashboardScreen({ navigation }) {
             icon="chart-bar"
             onPress={() => navigation.navigate("Reports")}
             style={styles.actionButton}
+            accessibilityLabel="Rapporten bekijken"
+            accessibilityHint="Bekijk productie rapporten en analyses"
           >
             Rapporten
           </Button>
@@ -523,6 +592,8 @@ export default function DashboardScreen({ navigation }) {
             icon="cart"
             onPress={() => navigation.navigate("Sales")}
             style={styles.actionButton}
+            accessibilityLabel="Verkoop beheren"
+            accessibilityHint="Ga naar verkoop overzicht en orders"
           >
             Verkoop
           </Button>
@@ -531,6 +602,8 @@ export default function DashboardScreen({ navigation }) {
             icon="truck-delivery"
             onPress={() => navigation.navigate("FeedDelivery")}
             style={styles.actionButton}
+            accessibilityLabel="Voerleveringen"
+            accessibilityHint="Beheer voerleveringen en voorraad"
           >
             Voerleveringen
           </Button>
@@ -874,5 +947,63 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     paddingVertical: 4,
+  },
+  // Interactive chart styles
+  interactiveChart: {
+    borderRadius: 12,
+    marginVertical: 8,
+  },
+  chartHint: {
+    fontSize: 12,
+    textAlign: "center",
+    marginTop: 8,
+    fontStyle: "italic",
+  },
+  chartTooltip: {
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  tooltipHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  tooltipTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  tooltipContent: {
+    gap: 4,
+  },
+  tooltipRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  tooltipText: {
+    fontSize: 14,
+  },
+  tooltipValue: {
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  tooltipDivider: {
+    height: 1,
+    backgroundColor: "rgba(0,0,0,0.1)",
+    marginVertical: 6,
+  },
+  tooltipBreakdown: {
+    marginTop: 2,
+  },
+  tooltipSmall: {
+    fontSize: 12,
   },
 });

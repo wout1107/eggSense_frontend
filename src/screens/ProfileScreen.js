@@ -35,16 +35,15 @@ export default function ProfileScreen({ navigation }) {
         style: "destructive",
         onPress: async () => {
           try {
+            // Call logout service - this clears storage and calls backend
             await authService.logout();
-            await AsyncStorage.removeItem("token");
-            await AsyncStorage.removeItem("user");
-            navigation.reset({
-              index: 0,
-              routes: [{ name: "Welcome" }],
-            });
+            // App.js will detect the auth state change and navigate automatically
           } catch (error) {
             console.error("Error logging out:", error);
-            Alert.alert("Fout", "Kon niet uitloggen");
+            // Even if backend fails, try to clear local storage
+            await AsyncStorage.removeItem("token");
+            await AsyncStorage.removeItem("user");
+            await AsyncStorage.removeItem("refreshToken");
           }
         },
       },

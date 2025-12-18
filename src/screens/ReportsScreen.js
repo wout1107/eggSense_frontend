@@ -20,6 +20,7 @@ import {
   Divider,
   ProgressBar,
 } from "react-native-paper";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import api from "../services/api";
 import productionService from "../services/productionService";
 import salesService from "../services/salesService";
@@ -27,14 +28,34 @@ import salesService from "../services/salesService";
 const { width } = Dimensions.get("window");
 
 export default function ReportScreen() {
+  const insets = useSafeAreaInsets();
   const [selectedPeriod, setSelectedPeriod] = useState("week");
   const [selectedMetric, setSelectedMetric] = useState("production");
   const [loading, setLoading] = useState(true);
   const [reportData, setReportData] = useState({
     production: [],
-    financial: {},
-    performance: {},
-    trends: {},
+    financial: {
+      revenue: 0,
+      costs: 0,
+      profit: 0,
+      feedCost: 0,
+      otherCosts: 0,
+      eggRevenue: { small: 0, medium: 0, large: 0 },
+    },
+    performance: {
+      avgEggWeight: 58,
+      feedConversion: 2.1,
+      waterConsumption: 0,
+      mortality: 0,
+      avgDailyEggs: 0,
+      eggWeightDistribution: { small: 33.3, medium: 33.3, large: 33.4 },
+    },
+    trends: {
+      productionTrend: 0,
+      feedEfficiencyTrend: 0,
+      mortalityTrend: 0,
+      profitTrend: 0,
+    },
     alerts: [],
   });
 
@@ -93,6 +114,33 @@ export default function ReportScreen() {
       setReportData(processedData);
     } catch (error) {
       console.error("Error loading report data:", error);
+      // Set safe default data to prevent render errors
+      setReportData({
+        production: [],
+        financial: {
+          revenue: 0,
+          costs: 0,
+          profit: 0,
+          feedCost: 0,
+          otherCosts: 0,
+          eggRevenue: { small: 0, medium: 0, large: 0 },
+        },
+        performance: {
+          avgEggWeight: 58,
+          feedConversion: 2.1,
+          waterConsumption: 0,
+          mortality: 0,
+          avgDailyEggs: 0,
+          eggWeightDistribution: { small: 33.3, medium: 33.3, large: 33.4 },
+        },
+        trends: {
+          productionTrend: 0,
+          feedEfficiencyTrend: 0,
+          mortalityTrend: 0,
+          profitTrend: 0,
+        },
+        alerts: [],
+      });
       Alert.alert("Fout", "Kon rapportgegevens niet laden");
     } finally {
       setLoading(false);
@@ -227,13 +275,25 @@ export default function ReportScreen() {
   };
 
   const calculatePerformanceMetrics = (production, feedDeliveries) => {
+    // Return default values if no production data
+    if (!production || production.length === 0) {
+      return {
+        avgEggWeight: 58,
+        feedConversion: 2.1,
+        waterConsumption: 0,
+        mortality: 0,
+        avgDailyEggs: 0,
+        eggWeightDistribution: { small: 33.3, medium: 33.3, large: 33.4 },
+      };
+    }
+
     const totalEggs = production.reduce(
       (sum, p) =>
         sum + (p.eggsSmall || 0) + (p.eggsMedium || 0) + (p.eggsLarge || 0),
       0
     );
 
-    const totalFeed = feedDeliveries.reduce(
+    const totalFeed = (feedDeliveries || []).reduce(
       (sum, f) => sum + (f.quantityKg || 0),
       0
     );
@@ -247,9 +307,9 @@ export default function ReportScreen() {
     );
 
     const avgDailyEggs = totalEggs / (production.length || 1);
-    const feedConversion = totalFeed / (totalEggs / 1000); // kg feed per 1000 eggs
+    const feedConversion = totalEggs > 0 ? totalFeed / (totalEggs / 1000) : 2.1; // kg feed per 1000 eggs
     const waterConsumption = totalWater;
-    const mortality = (totalMortality / production.length) * 100;
+    const mortality = production.length > 0 ? (totalMortality / production.length) * 100 : 0;
 
     // Calculate average egg weight (estimate based on size distribution)
     const smallWeight =
@@ -258,35 +318,40 @@ export default function ReportScreen() {
       production.reduce((sum, p) => sum + (p.eggsMedium || 0), 0) * 58;
     const largeWeight =
       production.reduce((sum, p) => sum + (p.eggsLarge || 0), 0) * 65;
-    const avgEggWeight = (smallWeight + mediumWeight + largeWeight) / totalEggs;
+    const avgEggWeight = totalEggs > 0 ? (smallWeight + mediumWeight + largeWeight) / totalEggs : 58;
 
     // Egg weight distribution
-    const eggWeightDistribution = {
-      small:
-        (production.reduce((sum, p) => sum + (p.eggsSmall || 0), 0) /
-          totalEggs) *
-        100,
-      medium:
-        (production.reduce((sum, p) => sum + (p.eggsMedium || 0), 0) /
-          totalEggs) *
-        100,
-      large:
-        (production.reduce((sum, p) => sum + (p.eggsLarge || 0), 0) /
-          totalEggs) *
-        100,
-    };
+    const smallTotal = production.reduce((sum, p) => sum + (p.eggsSmall || 0), 0);
+    const mediumTotal = production.reduce((sum, p) => sum + (p.eggsMedium || 0), 0);
+    const largeTotal = production.reduce((sum, p) => sum + (p.eggsLarge || 0), 0);
+
+    const eggWeightDistribution = totalEggs > 0 ? {
+      small: (smallTotal / totalEggs) * 100,
+      medium: (mediumTotal / totalEggs) * 100,
+      large: (largeTotal / totalEggs) * 100,
+    } : { small: 33.3, medium: 33.3, large: 33.4 };
 
     return {
       avgEggWeight: avgEggWeight || 58,
-      feedConversion: feedConversion || 2.1,
+      feedConversion: isNaN(feedConversion) ? 2.1 : feedConversion,
       waterConsumption,
-      mortality: mortality || 0,
-      avgDailyEggs,
+      mortality: isNaN(mortality) ? 0 : mortality,
+      avgDailyEggs: avgDailyEggs || 0,
       eggWeightDistribution,
     };
   };
 
   const calculateTrends = (production, sales, period) => {
+    // Return defaults if no data
+    if (!production || production.length === 0) {
+      return {
+        productionTrend: 0,
+        feedEfficiencyTrend: 0,
+        mortalityTrend: 0,
+        profitTrend: 0,
+      };
+    }
+
     // Split data into current and previous period
     const midpoint = Math.floor(production.length / 2);
     const previous = production.slice(0, midpoint);
@@ -303,45 +368,52 @@ export default function ReportScreen() {
       0
     );
 
-    const productionTrend =
-      ((currTotalEggs - prevTotalEggs) / prevTotalEggs) * 100 || 0;
+    const productionTrend = prevTotalEggs > 0
+      ? ((currTotalEggs - prevTotalEggs) / prevTotalEggs) * 100
+      : 0;
 
     // Similar calculations for other trends
-    const prevRevenue = sales
-      .slice(0, Math.floor(sales.length / 2))
-      .reduce((sum, s) => sum + s.totalPrice, 0);
-    const currRevenue = sales
-      .slice(Math.floor(sales.length / 2))
-      .reduce((sum, s) => sum + s.totalPrice, 0);
+    const safeSliceSales = sales || [];
+    const prevRevenue = safeSliceSales
+      .slice(0, Math.floor(safeSliceSales.length / 2))
+      .reduce((sum, s) => sum + (s.totalPrice || 0), 0);
+    const currRevenue = safeSliceSales
+      .slice(Math.floor(safeSliceSales.length / 2))
+      .reduce((sum, s) => sum + (s.totalPrice || 0), 0);
 
-    const profitTrend = ((currRevenue - prevRevenue) / prevRevenue) * 100 || 0;
+    const profitTrend = prevRevenue > 0
+      ? ((currRevenue - prevRevenue) / prevRevenue) * 100
+      : 0;
 
     return {
-      productionTrend,
+      productionTrend: isNaN(productionTrend) ? 0 : productionTrend,
       feedEfficiencyTrend: -2.5, // Mock for now
       mortalityTrend: -10.0, // Mock for now
-      profitTrend,
+      profitTrend: isNaN(profitTrend) ? 0 : profitTrend,
     };
   };
 
   const generateAlerts = (performance, trends) => {
     const alerts = [];
 
+    // Safely get values with defaults
+    const productionTrend = trends?.productionTrend ?? 0;
+    const feedConversion = performance?.feedConversion ?? 2.1;
+    const mortality = performance?.mortality ?? 0;
+
     // Production alert
-    if (trends.productionTrend > 3) {
+    if (productionTrend > 3) {
       alerts.push({
         id: 1,
         type: "success",
         title: "Uitstekende Productie",
-        message: `Productie ${trends.productionTrend.toFixed(
-          1
-        )}% boven vorige periode`,
+        message: `Productie ${productionTrend.toFixed(1)}% boven vorige periode`,
         severity: "low",
       });
     }
 
     // Feed conversion alert
-    if (performance.feedConversion > 2.5) {
+    if (feedConversion > 2.5) {
       alerts.push({
         id: 2,
         type: "warning",
@@ -352,14 +424,12 @@ export default function ReportScreen() {
     }
 
     // Mortality alert
-    if (performance.mortality > 2.0) {
+    if (mortality > 2.0) {
       alerts.push({
         id: 3,
         type: "error",
         title: "Verhoogde Uitval",
-        message: `Uitval percentage ${performance.mortality.toFixed(
-          1
-        )}% - Controleer gezondheid`,
+        message: `Uitval percentage ${mortality.toFixed(1)}% - Controleer gezondheid`,
         severity: "high",
       });
     }
@@ -367,38 +437,7 @@ export default function ReportScreen() {
     return alerts;
   };
 
-  const exportReport = () => {
-    Alert.alert("Rapport Exporteren", "Kies een export formaat", [
-      { text: "Annuleren", style: "cancel" },
-      {
-        text: "PDF",
-        onPress: () =>
-          Alert.alert("Succes", "Rapport geëxporteerd als PDF naar Downloads"),
-      },
-      {
-        text: "Excel",
-        onPress: () =>
-          Alert.alert(
-            "Succes",
-            "Rapport geëxporteerd als Excel naar Downloads"
-          ),
-      },
-    ]);
-  };
-
-  const shareReport = () => {
-    Alert.alert("Rapport Delen", "Wilt u dit rapport delen?", [
-      { text: "Annuleren", style: "cancel" },
-      {
-        text: "E-mail",
-        onPress: () => Alert.alert("E-mail", "Rapport wordt verzonden..."),
-      },
-      {
-        text: "WhatsApp",
-        onPress: () => Alert.alert("WhatsApp", "Rapport wordt gedeeld..."),
-      },
-    ]);
-  };
+  // Export and share functionality removed - was mock implementation
 
   const getPerformanceColor = (value, type) => {
     switch (type) {
@@ -597,7 +636,7 @@ export default function ReportScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.headerContainer}>
         <View>
           <Text style={styles.header}>Rapporten & Analyses</Text>
@@ -605,20 +644,7 @@ export default function ReportScreen() {
             {new Date().toLocaleDateString("nl-NL")}
           </Text>
         </View>
-        <View style={styles.headerActions}>
-          <IconButton
-            icon="share-variant"
-            size={24}
-            iconColor="#2E7D32"
-            onPress={shareReport}
-          />
-          <IconButton
-            icon="download"
-            size={24}
-            iconColor="#2E7D32"
-            onPress={exportReport}
-          />
-        </View>
+        {/* Export/share buttons removed - functionality not implemented */}
       </View>
 
       {/* Period Selection */}
@@ -1082,8 +1108,8 @@ export default function ReportScreen() {
                   {reportData.performance.avgEggWeight >= 58
                     ? "✓ Uitstekend"
                     : reportData.performance.avgEggWeight >= 55
-                    ? "⚠ Gemiddeld"
-                    : "✗ Onder norm"}
+                      ? "⚠ Gemiddeld"
+                      : "✗ Onder norm"}
                 </Text>
               </View>
 
@@ -1126,8 +1152,8 @@ export default function ReportScreen() {
                   {reportData.performance.feedConversion <= 2.2
                     ? "✓ Uitstekende efficiëntie"
                     : reportData.performance.feedConversion <= 2.5
-                    ? "⚠ Gemiddelde efficiëntie"
-                    : "✗ Verbetering nodig"}
+                      ? "⚠ Gemiddelde efficiëntie"
+                      : "✗ Verbetering nodig"}
                 </Text>
               </View>
 
@@ -1171,8 +1197,8 @@ export default function ReportScreen() {
                   {reportData.performance.mortality <= 1.0
                     ? "✓ Zeer laag (uitstekend)"
                     : reportData.performance.mortality <= 2.0
-                    ? "⚠ Acceptabel"
-                    : "✗ Aandacht vereist"}
+                      ? "⚠ Acceptabel"
+                      : "✗ Aandacht vereist"}
                 </Text>
               </View>
 
@@ -1195,8 +1221,8 @@ export default function ReportScreen() {
                     (selectedPeriod === "week"
                       ? 7
                       : selectedPeriod === "month"
-                      ? 30
-                      : 365)
+                        ? 30
+                        : 365)
                   ).toFixed(1)}
                   L/dag
                 </Text>
@@ -1289,8 +1315,8 @@ export default function ReportScreen() {
                       (selectedPeriod === "week"
                         ? 7
                         : selectedPeriod === "month"
-                        ? 30
-                        : 365) /
+                          ? 30
+                          : 365) /
                       reportData.performance.avgDailyEggs
                     ).toFixed(2)}
                     L
@@ -1354,27 +1380,6 @@ export default function ReportScreen() {
           </Paragraph>
         </Card.Content>
       </Card>
-
-      {/* Export Button */}
-      <View style={styles.exportContainer}>
-        <Button
-          mode="contained"
-          onPress={exportReport}
-          style={styles.exportButton}
-          buttonColor="#2E7D32"
-          icon="download"
-        >
-          Exporteer Volledig Rapport
-        </Button>
-        <Button
-          mode="outlined"
-          onPress={shareReport}
-          style={styles.shareButton}
-          icon="share-variant"
-        >
-          Deel Rapport
-        </Button>
-      </View>
     </ScrollView>
   );
 }

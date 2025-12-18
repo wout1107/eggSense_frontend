@@ -76,6 +76,8 @@ export default function LoginScreen({ navigation }) {
               mode="outlined"
               theme={{ colors: { primary: colors.primary, text: colors.onSurface } }}
               left={<TextInput.Icon icon="account" color={colors.onSurfaceVariant} />}
+              accessibilityLabel="Gebruikersnaam invoerveld"
+              accessibilityHint="Voer hier uw gebruikersnaam in"
             />
 
             <TextInput
@@ -92,8 +94,11 @@ export default function LoginScreen({ navigation }) {
                   icon={showPassword ? "eye-off" : "eye"}
                   onPress={() => setShowPassword(!showPassword)}
                   color={colors.onSurfaceVariant}
+                  accessibilityLabel={showPassword ? "Wachtwoord verbergen" : "Wachtwoord tonen"}
                 />
               }
+              accessibilityLabel="Wachtwoord invoerveld"
+              accessibilityHint="Voer hier uw wachtwoord in"
             />
 
             <TouchableOpacity
@@ -101,6 +106,11 @@ export default function LoginScreen({ navigation }) {
               disabled={loading}
               style={[styles.loginButton, { backgroundColor: colors.primary }, loading && styles.loginButtonDisabled]}
               activeOpacity={0.8}
+              accessible={true}
+              accessibilityLabel={loading ? "Bezig met inloggen" : "Inloggen knop"}
+              accessibilityHint="Dubbelklik om in te loggen met de ingevoerde gegevens"
+              accessibilityRole="button"
+              accessibilityState={{ disabled: loading }}
             >
               {loading ? (
                 <ActivityIndicator color="#fff" />
@@ -112,7 +122,10 @@ export default function LoginScreen({ navigation }) {
         </Card>
 
         <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: colors.onSurfaceVariant }]}>
+          <Text
+            style={[styles.footerText, { color: colors.onSurfaceVariant }]}
+            accessibilityRole="text"
+          >
             Nog geen account? Neem contact op met je beheerder
           </Text>
         </View>

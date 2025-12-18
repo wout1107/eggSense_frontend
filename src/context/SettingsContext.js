@@ -3,13 +3,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SETTINGS_STORAGE_KEY = '@eggsense_settings';
 
+// Simplified settings - only 3 functional settings
 const defaultSettings = {
-    notificationsEnabled: true,
-    lowStockAlerts: true,
-    dataSaverMode: false,
-    wifiOnlyImages: false,
-    language: 'nl',
+    // Setting 1: Default stal selection for quick access
     defaultStallId: null,
+    // Setting 2: Low stock alert threshold (days of feed remaining)
+    lowStockAlertDays: 7,
+    // Setting 3: Auto-refresh interval (minutes) - 0 = disabled
+    autoRefreshInterval: 5,
 };
 
 const SettingsContext = createContext({

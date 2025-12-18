@@ -6,6 +6,16 @@ const productionService = {
     return response.data;
   },
 
+  listProduction: async (params = {}) => {
+    try {
+      const response = await api.get("/daily-productions", { params });
+      return response.data || [];
+    } catch (error) {
+      console.error("Error listing production:", error);
+      return [];
+    }
+  },
+
   createDailyProduction: async (productionData) => {
     const response = await api.post("/daily-productions", productionData);
     return response.data;

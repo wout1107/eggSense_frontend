@@ -34,10 +34,13 @@ const authService = {
       // Get the refreshToken from storage
       const refreshToken = await AsyncStorage.getItem("refreshToken");
 
-      // Call the backend logout endpoint with the refreshToken
-      await api.post("/auth/logout", {
-        refreshToken: refreshToken || "",
-      });
+      // Only call backend if we have a valid refreshToken
+      // Backend requires @NotBlank, so empty/null will cause 400 error
+      if (refreshToken && refreshToken.trim() !== "") {
+        await api.post("/auth/logout", {
+          refreshToken: refreshToken,
+        });
+      }
     } catch (error) {
       console.error("Logout error:", error);
       // Continue with local cleanup even if backend logout fails
