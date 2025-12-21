@@ -35,7 +35,7 @@ export default function WelcomeScreen({ navigation }) {
       icon: "chart-box",
       title: "Slimme Rapporten",
       description:
-        "Automatische rapporten en analyses om uw bedrijf te optimaliseren. Export naar Excel en PDF.",
+        "Automatische rapporten en analyses om uw bedrijf te optimaliseren.",
     },
     {
       icon: "bell-alert",
@@ -224,12 +224,7 @@ export default function WelcomeScreen({ navigation }) {
                 Beheer meerdere stallen vanuit één app
               </Text>
             </View>
-            <View style={styles.benefitItem}>
-              <IconButton icon="check-circle" size={24} iconColor="#4CAF50" />
-              <Text style={styles.benefitText}>
-                Data export voor accountant en administratie
-              </Text>
-            </View>
+
           </View>
         </Card.Content>
       </Card>

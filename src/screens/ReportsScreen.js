@@ -437,7 +437,6 @@ export default function ReportScreen() {
     return alerts;
   };
 
-  // Export and share functionality removed - was mock implementation
 
   const getPerformanceColor = (value, type) => {
     switch (type) {
@@ -644,7 +643,6 @@ export default function ReportScreen() {
             {new Date().toLocaleDateString("nl-NL")}
           </Text>
         </View>
-        {/* Export/share buttons removed - functionality not implemented */}
       </View>
 
       {/* Period Selection */}
@@ -1739,16 +1737,6 @@ const styles = StyleSheet.create({
   summaryHighlight: {
     fontWeight: "bold",
     color: "#2E7D32",
-  },
-  exportContainer: {
-    gap: 8,
-    marginBottom: 32,
-  },
-  exportButton: {
-    paddingVertical: 8,
-  },
-  shareButton: {
-    borderColor: "#2E7D32",
   },
   loadingContainer: {
     flex: 1,
