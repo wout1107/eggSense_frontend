@@ -185,7 +185,7 @@ function AppContent() {
           <Stack.Navigator
             screenOptions={{
               headerShown: false,
-              cardStyle: { backgroundColor: 'transparent' },
+              cardStyle: { backgroundColor: 'transparent', flex: 1, height: '100%' },
             }}
           >
             {!isAuthenticated ? (

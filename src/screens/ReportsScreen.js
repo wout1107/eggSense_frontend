@@ -27,7 +27,7 @@ import salesService from "../services/salesService";
 
 const { width } = Dimensions.get("window");
 
-export default function ReportScreen() {
+export default function ReportScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const [selectedPeriod, setSelectedPeriod] = useState("week");
   const [selectedMetric, setSelectedMetric] = useState("production");
@@ -637,7 +637,13 @@ export default function ReportScreen() {
   return (
     <ScrollView style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.headerContainer}>
-        <View>
+        <IconButton
+          icon="arrow-left"
+          size={24}
+          onPress={() => navigation.goBack()}
+          iconColor="#2E7D32"
+        />
+        <View style={{ flex: 1 }}>
           <Text style={styles.header}>Rapporten & Analyses</Text>
           <Text style={styles.subheader}>
             {new Date().toLocaleDateString("nl-NL")}

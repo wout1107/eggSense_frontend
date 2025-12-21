@@ -272,7 +272,7 @@ export default function SettingsScreen({ navigation }) {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 32 }}>
         {/* Category Selector */}
         <SegmentedButtons
           value={selectedCategory}

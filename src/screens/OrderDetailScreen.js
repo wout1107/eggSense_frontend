@@ -235,7 +235,7 @@ export default function OrderDetailScreen({ route, navigation }) {
         </Menu>
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 32 }}>
         {/* Customer Information */}
         <Card
           style={[styles.card, { backgroundColor: colors.surface }]}

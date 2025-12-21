@@ -227,7 +227,7 @@ export default function CustomerDetailScreen({ route, navigation }) {
         />
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 32 }}>
         {/* Customer Statistics */}
         <Card style={[styles.card, { backgroundColor: colors.surface }]}>
           <Card.Content>
