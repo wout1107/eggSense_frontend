@@ -2,10 +2,10 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Network options:
+// - Docker/K8s with nginx proxy: use "/api" (via EXPO_PUBLIC_API_BASE env var)
 // - iOS Simulator: use "http://localhost:8080/api"
 // - Physical device (same network): use "http://YOUR_IP:8080/api"
-// - School/work network: May need cloud backend due to client isolation
-const API_BASE_URL = "http://192.168.1.54:8080/api"; // Local network IP
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE || "/api";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
