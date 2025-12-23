@@ -4,10 +4,12 @@ const customerService = {
   async listCustomers() {
     try {
       const response = await api.get("/customers");
-      return response.data;
+      // Handle paged response format {content: [...], pageable: {...}}
+      const data = response.data;
+      return Array.isArray(data) ? data : (data.content || []);
     } catch (error) {
       console.error("Error listing customers:", error);
-      throw error;
+      return []; // Return empty array on error to prevent crash
     }
   },
 

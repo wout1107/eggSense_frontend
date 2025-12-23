@@ -4,10 +4,12 @@ const salesService = {
   async listOrders(filters = {}) {
     try {
       const response = await api.get("/sales", { params: filters });
-      return response.data;
+      // Handle paged response format {content: [...], pageable: {...}}
+      const data = response.data;
+      return Array.isArray(data) ? data : (data.content || []);
     } catch (error) {
       console.error("Error listing orders:", error);
-      throw error;
+      return []; // Return empty array on error to prevent crash
     }
   },
 
