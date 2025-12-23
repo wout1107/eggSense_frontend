@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, Alert } from "react-native";
-import { Card, Button, List, Avatar, Divider } from "react-native-paper";
+import { View, Text, StyleSheet, ScrollView, Platform } from "react-native";
+import { Card, Button, List, Avatar, Divider, Dialog, Portal } from "react-native-paper";
 import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -11,6 +11,7 @@ export default function ProfileScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { isDarkMode, colors } = useTheme();
   const [user, setUser] = useState(null);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   useEffect(() => {
     loadUserData();
@@ -27,27 +28,23 @@ export default function ProfileScreen({ navigation }) {
     }
   };
 
-  const handleLogout = async () => {
-    Alert.alert("Uitloggen", "Weet je zeker dat je wilt uitloggen?", [
-      { text: "Annuleren", style: "cancel" },
-      {
-        text: "Uitloggen",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            // Call logout service - this clears storage and calls backend
-            await authService.logout();
-            // App.js will detect the auth state change and navigate automatically
-          } catch (error) {
-            console.error("Error logging out:", error);
-            // Even if backend fails, try to clear local storage
-            await AsyncStorage.removeItem("token");
-            await AsyncStorage.removeItem("user");
-            await AsyncStorage.removeItem("refreshToken");
-          }
-        },
-      },
-    ]);
+  const handleLogout = () => {
+    setShowLogoutDialog(true);
+  };
+
+  const confirmLogout = async () => {
+    setShowLogoutDialog(false);
+    try {
+      // Call logout service - this clears storage and calls backend
+      await authService.logout();
+      // App.js will detect the auth state change and navigate automatically
+    } catch (error) {
+      console.error("Error logging out:", error);
+      // Even if backend fails, try to clear local storage
+      await AsyncStorage.removeItem("token");
+      await AsyncStorage.removeItem("user");
+      await AsyncStorage.removeItem("refreshToken");
+    }
   };
 
   return (
@@ -210,6 +207,27 @@ export default function ProfileScreen({ navigation }) {
           <Text style={[styles.footerSubtext, { color: colors.onSurfaceVariant }]}>© 2024 EggSense Solutions</Text>
         </View>
       </ScrollView>
+
+      {/* Logout Confirmation Dialog - Works on all platforms including web */}
+      <Portal>
+        <Dialog visible={showLogoutDialog} onDismiss={() => setShowLogoutDialog(false)}>
+          <Dialog.Title>Uitloggen</Dialog.Title>
+          <Dialog.Content>
+            <Text style={{ color: isDarkMode ? colors.onSurface : '#333' }}>
+              Weet je zeker dat je wilt uitloggen?
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setShowLogoutDialog(false)}>Annuleren</Button>
+            <Button
+              onPress={confirmLogout}
+              textColor="#F44336"
+            >
+              Uitloggen
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </View>
   );
 }
