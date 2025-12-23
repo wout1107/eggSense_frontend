@@ -16,7 +16,7 @@ import {
   FAB,
   Chip,
 } from "react-native-paper";
-import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import api from "../services/api";
 import stallService from "../services/stallService";

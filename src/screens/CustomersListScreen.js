@@ -19,7 +19,7 @@ import {
     TextInput,
     Button, // Reordered
 } from "react-native-paper";
-import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context"; // Added import
 import customerService from "../services/customerService";
 import { useTheme } from "../context/ThemeContext";

@@ -4,7 +4,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Provider as PaperProvider } from "react-native-paper";
-import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
 import { View, ActivityIndicator, Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -109,9 +109,10 @@ function AppContent() {
     isAuthenticatedRef.current = isAuthenticated;
   }, [isAuthenticated]);
 
-  // Ensure proper root height on web
+  // Ensure proper root height on web and load icon fonts
   useEffect(() => {
     if (Platform.OS === 'web') {
+      // Add root styling
       const style = document.createElement('style');
       style.textContent = `
         html, body, #root {
@@ -121,7 +122,32 @@ function AppContent() {
         }
       `;
       document.head.appendChild(style);
-      return () => document.head.removeChild(style);
+
+      // Load MaterialCommunityIcons font from CDN for web
+      const fontLink = document.createElement('link');
+      fontLink.rel = 'stylesheet';
+      fontLink.href = 'https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css';
+      document.head.appendChild(fontLink);
+
+      // Also load the icon font style with correct font-family name
+      const iconStyle = document.createElement('style');
+      iconStyle.textContent = `
+        @font-face {
+          font-family: 'material-community';
+          src: url('https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/fonts/materialdesignicons-webfont.ttf') format('truetype');
+        }
+        @font-face {
+          font-family: 'MaterialCommunityIcons';
+          src: url('https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/fonts/materialdesignicons-webfont.ttf') format('truetype');
+        }
+      `;
+      document.head.appendChild(iconStyle);
+
+      return () => {
+        document.head.removeChild(style);
+        document.head.removeChild(fontLink);
+        document.head.removeChild(iconStyle);
+      };
     }
   }, []);
 

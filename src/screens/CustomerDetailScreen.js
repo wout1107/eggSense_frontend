@@ -17,7 +17,7 @@ import {
   TextInput,
   Chip,
 } from "react-native-paper";
-import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
 import customerService from "../services/customerService";
 import salesService from "../services/salesService";
 import { useTheme } from "../context/ThemeContext";

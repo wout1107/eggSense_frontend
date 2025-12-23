@@ -20,7 +20,7 @@ import {
   SegmentedButtons,
   IconButton,
 } from "react-native-paper";
-import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import salesService from "../services/salesService";
 import customerService from "../services/customerService";

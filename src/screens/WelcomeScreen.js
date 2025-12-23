@@ -9,7 +9,7 @@ import {
   Platform,
 } from "react-native";
 import { Card, Title, Paragraph, IconButton, Chip } from "react-native-paper";
-import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width } = Dimensions.get("window");
@@ -97,7 +97,7 @@ export default function WelcomeScreen({ navigation }) {
       <View style={styles.heroSection}>
         <View style={styles.logoContainer}>
           <View style={styles.logoIcon}>
-            <Text style={styles.logoEmoji}>🥚</Text>
+            <Icon name="egg-outline" size={50} color="#fff" />
           </View>
           <Title style={styles.appTitle}>EggSense</Title>
           <Paragraph style={styles.heroTagline}>
@@ -131,7 +131,7 @@ export default function WelcomeScreen({ navigation }) {
           </View>
 
           <View style={styles.marketTrends}>
-            <Text style={styles.trendsTitle}>📊 Markttrends deze week</Text>
+            <Text style={styles.trendsTitle}><Icon name="chart-bar" size={16} color="#333" /> Markttrends deze week</Text>
             <View style={styles.trendsRow}>
               {marketTrends.map((trend, index) => (
                 <View key={index} style={styles.trendItem}>

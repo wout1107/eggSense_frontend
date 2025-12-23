@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { TextInput, Card } from "react-native-paper";
-import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
 import authService from "../services/authService";
 import { useTheme } from "../context/ThemeContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";

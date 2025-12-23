@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, ScrollView, Alert } from "react-native";
 import { Card, Button, List, Avatar, Divider } from "react-native-paper";
-import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import authService from "../services/authService";
