@@ -25,12 +25,14 @@ import api from "../services/api";
 import productionService from "../services/productionService";
 import salesService from "../services/salesService";
 import { useSettings } from "../context/SettingsContext";
+import { useTheme } from "../context/ThemeContext";
 
 const { width } = Dimensions.get("window");
 
 export default function ReportScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { t } = useSettings();
+  const { isDarkMode, colors } = useTheme();
   const [selectedPeriod, setSelectedPeriod] = useState("week");
   const [selectedMetric, setSelectedMetric] = useState("production");
   const [loading, setLoading] = useState(true);
@@ -629,25 +631,25 @@ export default function ReportScreen({ navigation }) {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2E7D32" />
-        <Text style={styles.loadingText}>Rapporten laden...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.onSurface }]}>{t('loading')}</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={[styles.container, { paddingTop: insets.top }]}>
+    <ScrollView style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       <View style={styles.headerContainer}>
         <IconButton
           icon="arrow-left"
           size={24}
           onPress={() => navigation.goBack()}
-          iconColor="#2E7D32"
+          iconColor={colors.primary}
         />
         <View style={{ flex: 1 }}>
-          <Text style={styles.header}>{t('reportsAnalytics')}</Text>
-          <Text style={styles.subheader}>
+          <Text style={[styles.header, { color: colors.primary }]}>{t('reportsAnalytics')}</Text>
+          <Text style={[styles.subheader, { color: colors.onSurfaceVariant }]}>
             {new Date().toLocaleDateString("nl-NL")}
           </Text>
         </View>
@@ -689,9 +691,9 @@ export default function ReportScreen({ navigation }) {
       )}
 
       {/* Key Trends */}
-      <Card style={styles.card}>
+      <Card style={[styles.card, { backgroundColor: colors.surface }]}>
         <Card.Content>
-          <Title style={styles.cardTitle}>Belangrijkste Trends</Title>
+          <Title style={[styles.cardTitle, { color: colors.primary }]}>{t('keyTrends')}</Title>
           <View style={styles.trendsGrid}>
             <View style={styles.trendItem}>
               <IconButton

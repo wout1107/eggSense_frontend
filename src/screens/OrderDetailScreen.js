@@ -257,25 +257,25 @@ export default function OrderDetailScreen({ route, navigation }) {
           />
           <Card.Content>
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>{t('name')}:</Text>
-              <Text style={styles.infoValue}>{customer.name}</Text>
+              <Text style={[styles.infoLabel, { color: colors.onSurfaceVariant }]}>{t('name')}:</Text>
+              <Text style={[styles.infoValue, { color: colors.onSurface }]}>{customer.name}</Text>
             </View>
             {customer.email && (
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>{t('email')}:</Text>
-                <Text style={styles.infoValue}>{customer.email}</Text>
+                <Text style={[styles.infoLabel, { color: colors.onSurfaceVariant }]}>{t('email')}:</Text>
+                <Text style={[styles.infoValue, { color: colors.onSurface }]}>{customer.email}</Text>
               </View>
             )}
             {customer.phone && (
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>{t('phone')}:</Text>
-                <Text style={styles.infoValue}>{customer.phone}</Text>
+                <Text style={[styles.infoLabel, { color: colors.onSurfaceVariant }]}>{t('phone')}:</Text>
+                <Text style={[styles.infoValue, { color: colors.onSurface }]}>{customer.phone}</Text>
               </View>
             )}
             {customer.address && (
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>{t('address')}:</Text>
-                <Text style={styles.infoValue}>{customer.address}</Text>
+                <Text style={[styles.infoLabel, { color: colors.onSurfaceVariant }]}>{t('address')}:</Text>
+                <Text style={[styles.infoValue, { color: colors.onSurface }]}>{customer.address}</Text>
               </View>
             )}
           </Card.Content>
@@ -371,8 +371,8 @@ export default function OrderDetailScreen({ route, navigation }) {
                 <View
                   style={[styles.timelineDot, { backgroundColor: "#4CAF50" }]}
                 />
-                <Text style={styles.timelineText}>{t('orderCreated')}</Text>
-                <Text style={styles.timelineDate}>
+                <Text style={[styles.timelineText, { color: colors.onSurface }]}>{t('orderCreated')}</Text>
+                <Text style={[styles.timelineDate, { color: colors.onSurfaceVariant }]}>
                   {new Date(order.saleTime).toLocaleString("nl-NL")}
                 </Text>
               </View>
@@ -384,7 +384,7 @@ export default function OrderDetailScreen({ route, navigation }) {
                       { backgroundColor: getStatusColor(order.status) },
                     ]}
                   />
-                  <Text style={styles.timelineText}>
+                  <Text style={[styles.timelineText, { color: colors.onSurface }]}>
                     {getStatusLabel(order.status)}
                   </Text>
                 </View>

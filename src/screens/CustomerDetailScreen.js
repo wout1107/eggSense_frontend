@@ -127,6 +127,22 @@ export default function CustomerDetailScreen({ route, navigation }) {
     }
   };
 
+  const getStatusTextColor = (status) => {
+    // Return white for dark backgrounds, dark for light backgrounds
+    switch (status) {
+      case "PENDING":
+        return "#fff"; // Orange is dark enough
+      case "CONFIRMED":
+        return "#fff"; // Blue is dark enough
+      case "DELIVERED":
+        return "#fff"; // Green is dark enough
+      case "CANCELLED":
+        return "#fff"; // Red is dark enough
+      default:
+        return "#fff";
+    }
+  };
+
   const getStatusLabel = (status) => {
     switch (status) {
       case "PENDING":
@@ -170,7 +186,7 @@ export default function CustomerDetailScreen({ route, navigation }) {
                 styles.statusChip,
                 { backgroundColor: getStatusColor(item.status) },
               ]}
-              textStyle={styles.statusText}
+              textStyle={[styles.statusText, { color: getStatusTextColor(item.status) }]}
             >
               {getStatusLabel(item.status)}
             </Chip>
@@ -515,12 +531,15 @@ const styles = StyleSheet.create({
     color: "#333",
   },
   statusChip: {
-    height: 24,
+    height: 22,
+    paddingHorizontal: 2,
   },
   statusText: {
     color: "#fff",
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: "bold",
+    lineHeight: 12,
+    marginVertical: 0,
   },
   orderDate: {
     fontSize: 12,

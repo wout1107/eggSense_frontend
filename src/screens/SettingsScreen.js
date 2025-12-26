@@ -63,7 +63,7 @@ export default function SettingsScreen({ navigation }) {
       await loadUserData();
     } catch (error) {
       console.error("Error loading settings data:", error);
-      Alert.alert(('error'), ('couldNotLoadSettings'));
+      Alert.alert(t('error'), t('couldNotLoadSettings'));
     } finally {
       setLoading(false);
     }

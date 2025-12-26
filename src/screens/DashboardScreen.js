@@ -33,7 +33,7 @@ const { width: screenWidth } = Dimensions.get("window");
 export default function DashboardScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { isDarkMode, colors } = useTheme();
-  const { t } = useSettings();
+  const { t, settings } = useSettings();
   const [refreshing, setRefreshing] = useState(false);
   const [stalls, setStalls] = useState([]);
   const [selectedStall, setSelectedStall] = useState(null);
@@ -52,12 +52,22 @@ export default function DashboardScreen({ navigation }) {
       const activeStalls = stallsData.filter((s) => s.active);
       setStalls(activeStalls.length > 0 ? activeStalls : stallsData);
 
-      // Select first active stall by default
-      const activeStall =
-        activeStalls.length > 0 ? activeStalls[0] : stallsData[0];
-      if (activeStall) {
-        setSelectedStall(activeStall);
-        await loadStallData(activeStall.id);
+      // Select stall based on settings or first active
+      let stallToSelect = null;
+
+      // Check if defaultStallId is set in settings
+      if (settings.defaultStallId) {
+        stallToSelect = stallsData.find(s => s.id === settings.defaultStallId);
+      }
+
+      // Fallback to first active stall or first stall
+      if (!stallToSelect) {
+        stallToSelect = activeStalls.length > 0 ? activeStalls[0] : stallsData[0];
+      }
+
+      if (stallToSelect) {
+        setSelectedStall(stallToSelect);
+        await loadStallData(stallToSelect.id);
       }
     } catch (error) {
       console.error("Error loading dashboard:", error);
@@ -135,6 +145,17 @@ export default function DashboardScreen({ navigation }) {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // React to default stall changes from settings
+  useEffect(() => {
+    if (settings.defaultStallId && stalls.length > 0) {
+      const defaultStall = stalls.find(s => s.id === settings.defaultStallId);
+      if (defaultStall && (!selectedStall || selectedStall.id !== settings.defaultStallId)) {
+        setSelectedStall(defaultStall);
+        loadStallData(defaultStall.id);
+      }
+    }
+  }, [settings.defaultStallId, stalls]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -504,10 +525,11 @@ export default function DashboardScreen({ navigation }) {
   };
 
   const renderInventoryAlert = () => {
-    if (!inventory || !inventory.daysRemaining || inventory.daysRemaining > 7)
+    const alertDays = settings.lowStockAlertDays || 7;
+    if (!inventory || !inventory.daysRemaining || inventory.daysRemaining > alertDays)
       return null;
 
-    const isLow = inventory.daysRemaining <= 3;
+    const isLow = inventory.daysRemaining <= Math.floor(alertDays / 2);
     const isCritical = inventory.daysRemaining <= 1;
     const currentStock = inventory.currentStock || 0;
     const daysRemaining = inventory.daysRemaining || 0;
@@ -552,13 +574,14 @@ export default function DashboardScreen({ navigation }) {
 
   const renderQuickActions = () => (
     <Card
-      style={styles.card}
+      style={[styles.card, { backgroundColor: colors.surface }]}
       accessible={true}
       accessibilityLabel="Snelle acties sectie"
     >
       <Card.Title
         title={t('quickActions')}
-        left={(props) => <Icon {...props} name="lightning-bolt" size={24} />}
+        titleStyle={{ color: colors.onSurface }}
+        left={(props) => <Icon {...props} name="lightning-bolt" size={24} color={colors.primary} />}
       />
       <Card.Content>
         <View style={styles.actionsGrid}>
@@ -582,6 +605,7 @@ export default function DashboardScreen({ navigation }) {
             icon="chart-bar"
             onPress={() => navigation.navigate("Reports")}
             style={styles.actionButton}
+            textColor={colors.onSurface}
             accessibilityLabel="Rapporten bekijken"
             accessibilityHint="Bekijk productie rapporten en analyses"
           >
@@ -592,6 +616,7 @@ export default function DashboardScreen({ navigation }) {
             icon="cart"
             onPress={() => navigation.navigate("Sales")}
             style={styles.actionButton}
+            textColor={colors.onSurface}
             accessibilityLabel="Verkoop beheren"
             accessibilityHint="Ga naar verkoop overzicht en orders"
           >
@@ -602,6 +627,7 @@ export default function DashboardScreen({ navigation }) {
             icon="truck-delivery"
             onPress={() => navigation.navigate("FeedDelivery")}
             style={styles.actionButton}
+            textColor={colors.onSurface}
             accessibilityLabel="Voerleveringen"
             accessibilityHint="Beheer voerleveringen en voorraad"
           >
