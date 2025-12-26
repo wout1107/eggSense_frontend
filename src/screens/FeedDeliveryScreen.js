@@ -6,6 +6,8 @@ import {
   FlatList,
   RefreshControl,
   Alert,
+  ScrollView,
+  Platform,
 } from "react-native";
 import {
   Card,
@@ -258,48 +260,50 @@ export default function FeedDeliveryScreen() {
       <Portal>
         <Dialog visible={showDialog} onDismiss={() => setShowDialog(false)}>
           <Dialog.Title>{t('newFeedDelivery')}</Dialog.Title>
-          <Dialog.ScrollArea>
-            <View style={styles.dialogContent}>
-              <TextInput
-                label={`${t('supplier')} *`}
-                value={newDelivery.supplier}
-                onChangeText={(text) =>
-                  setNewDelivery({ ...newDelivery, supplier: text })
-                }
-                style={styles.input}
-              />
+          <Dialog.ScrollArea style={{ maxHeight: 350 }}>
+            <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 50 }}>
+              <View style={styles.dialogContent}>
+                <TextInput
+                  label={`${t('supplier')} *`}
+                  value={newDelivery.supplier}
+                  onChangeText={(text) =>
+                    setNewDelivery({ ...newDelivery, supplier: text })
+                  }
+                  style={styles.input}
+                />
 
-              <TextInput
-                label={`${t('quantityKg')} *`}
-                value={newDelivery.quantityKg}
-                onChangeText={(text) =>
-                  setNewDelivery({ ...newDelivery, quantityKg: text })
-                }
-                keyboardType="numeric"
-                style={styles.input}
-              />
+                <TextInput
+                  label={`${t('quantityKg')} *`}
+                  value={newDelivery.quantityKg}
+                  onChangeText={(text) =>
+                    setNewDelivery({ ...newDelivery, quantityKg: text })
+                  }
+                  keyboardType="numeric"
+                  style={styles.input}
+                />
 
-              <TextInput
-                label={t('costEuro')}
-                value={newDelivery.cost}
-                onChangeText={(text) =>
-                  setNewDelivery({ ...newDelivery, cost: text })
-                }
-                keyboardType="decimal-pad"
-                style={styles.input}
-              />
+                <TextInput
+                  label={t('costEuro')}
+                  value={newDelivery.cost}
+                  onChangeText={(text) =>
+                    setNewDelivery({ ...newDelivery, cost: text })
+                  }
+                  keyboardType="decimal-pad"
+                  style={styles.input}
+                />
 
-              <TextInput
-                label={t('notes')}
-                value={newDelivery.notes}
-                onChangeText={(text) =>
-                  setNewDelivery({ ...newDelivery, notes: text })
-                }
-                multiline
-                numberOfLines={3}
-                style={styles.input}
-              />
-            </View>
+                <TextInput
+                  label={t('notes')}
+                  value={newDelivery.notes}
+                  onChangeText={(text) =>
+                    setNewDelivery({ ...newDelivery, notes: text })
+                  }
+                  multiline
+                  numberOfLines={3}
+                  style={styles.input}
+                />
+              </View>
+            </ScrollView>
           </Dialog.ScrollArea>
           <Dialog.Actions>
             <Button onPress={() => setShowDialog(false)}>{t('cancel')}</Button>
