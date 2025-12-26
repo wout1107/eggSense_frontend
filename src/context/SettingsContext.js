@@ -1,15 +1,18 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { translations } from '../i18n/translations';
 
 const SETTINGS_STORAGE_KEY = '@eggsense_settings';
 
-// Simplified settings - only 3 functional settings
+// Simplified settings - functional settings that affect the app
 const defaultSettings = {
-    // Setting 1: Default stal selection for quick access
+    // Setting 1: Language preference (nl = Nederlands, en = English)
+    language: 'nl',
+    // Setting 2: Default stal selection for quick access
     defaultStallId: null,
-    // Setting 2: Low stock alert threshold (days of feed remaining)
+    // Setting 3: Low stock alert threshold (days of feed remaining)
     lowStockAlertDays: 7,
-    // Setting 3: Auto-refresh interval (minutes) - 0 = disabled
+    // Setting 4: Auto-refresh interval (minutes) - 0 = disabled
     autoRefreshInterval: 5,
 };
 
@@ -18,6 +21,7 @@ const SettingsContext = createContext({
     updateSetting: () => { },
     resetSettings: () => { },
     isLoading: true,
+    t: (key) => key, // Translation function
 });
 
 export function SettingsProvider({ children }) {
@@ -61,14 +65,21 @@ export function SettingsProvider({ children }) {
         }
     };
 
+    // Translation function that uses current language setting
+    const t = useCallback((key) => {
+        const lang = settings.language || 'nl';
+        return translations[lang]?.[key] || translations['nl']?.[key] || key;
+    }, [settings.language]);
+
     const value = useMemo(
         () => ({
             settings,
             updateSetting,
             resetSettings,
             isLoading,
+            t, // Translation function
         }),
-        [settings, isLoading]
+        [settings, isLoading, t]
     );
 
     return (

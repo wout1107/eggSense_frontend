@@ -22,10 +22,12 @@ import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
 import salesService from "../services/salesService";
 import customerService from "../services/customerService";
 import { useTheme } from "../context/ThemeContext";
+import { useSettings } from "../context/SettingsContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function OrderDetailScreen({ route, navigation }) {
   const { isDarkMode, colors } = useTheme();
+  const { t } = useSettings();
   const insets = useSafeAreaInsets();
   const { orderId } = route.params;
   const [order, setOrder] = useState(null);
@@ -64,7 +66,7 @@ export default function OrderDetailScreen({ route, navigation }) {
       setCustomer(customerData);
     } catch (error) {
       console.error("Error loading order details:", error);
-      Alert.alert("Fout", "Kon ordergegevens niet ophalen");
+      Alert.alert(t('error'), t('couldNotLoadOrder'));
       navigation.goBack();
     } finally {
       setLoading(false);
@@ -78,7 +80,7 @@ export default function OrderDetailScreen({ route, navigation }) {
       parseInt(editedOrder.eggsLarge || 0);
 
     if (totalEggs === 0) {
-      Alert.alert("Fout", "Voer minstens één type ei in");
+      Alert.alert(t('error'), t('enterAtLeastOneEgg'));
       return;
     }
 
@@ -95,10 +97,10 @@ export default function OrderDetailScreen({ route, navigation }) {
 
       setShowEditDialog(false);
       await loadOrderDetails();
-      Alert.alert("Succes", "Order succesvol bijgewerkt");
+      Alert.alert(t('success'), t('orderUpdated'));
     } catch (error) {
       console.error("Error updating order:", error);
-      Alert.alert("Fout", "Kon order niet bijwerken");
+      Alert.alert(t('error'), t('couldNotUpdateOrder'));
     }
   };
 
@@ -106,12 +108,12 @@ export default function OrderDetailScreen({ route, navigation }) {
     try {
       await salesService.deleteOrder(orderId);
       setShowDeleteDialog(false);
-      Alert.alert("Succes", "Order succesvol verwijderd", [
-        { text: "OK", onPress: () => navigation.goBack() },
+      Alert.alert(t('success'), t('orderDeleted'), [
+        { text: t('ok'), onPress: () => navigation.goBack() },
       ]);
     } catch (error) {
       console.error("Error deleting order:", error);
-      Alert.alert("Fout", "Kon order niet verwijderen");
+      Alert.alert(t('error'), t('couldNotDeleteOrder'));
     }
   };
 
@@ -119,10 +121,10 @@ export default function OrderDetailScreen({ route, navigation }) {
     try {
       await salesService.updateStatus(orderId, newStatus);
       await loadOrderDetails();
-      Alert.alert("Succes", "Status bijgewerkt");
+      Alert.alert(t('success'), t('statusUpdated'));
     } catch (error) {
       console.error("Error updating status:", error);
-      Alert.alert("Fout", "Kon status niet bijwerken");
+      Alert.alert(t('error'), t('couldNotUpdateStatus'));
     }
   };
 
@@ -144,13 +146,13 @@ export default function OrderDetailScreen({ route, navigation }) {
   const getStatusLabel = (status) => {
     switch (status) {
       case "PENDING":
-        return "In behandeling";
+        return t('inProgress');
       case "CONFIRMED":
-        return "Bevestigd";
+        return t('confirmed');
       case "DELIVERED":
-        return "Geleverd";
+        return t('delivered');
       case "CANCELLED":
-        return "Geannuleerd";
+        return t('cancelled');
       default:
         return status;
     }
@@ -160,7 +162,7 @@ export default function OrderDetailScreen({ route, navigation }) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.loadingText, { color: colors.onSurfaceVariant }]}>Laden...</Text>
+        <Text style={[styles.loadingText, { color: colors.onSurfaceVariant }]}>{t('loading')}</Text>
       </View>
     );
   }
@@ -168,7 +170,7 @@ export default function OrderDetailScreen({ route, navigation }) {
   if (!order || !customer) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
-        <Text style={{ color: colors.onSurface }}>Order niet gevonden</Text>
+        <Text style={{ color: colors.onSurface }}>{t('orderNotFound')}</Text>
       </View>
     );
   }
@@ -221,7 +223,7 @@ export default function OrderDetailScreen({ route, navigation }) {
               setMenuVisible(false);
               setShowEditDialog(true);
             }}
-            title="Bewerken"
+            title={t('edit')}
             leadingIcon="pencil"
           />
           <Menu.Item
@@ -229,7 +231,7 @@ export default function OrderDetailScreen({ route, navigation }) {
               setMenuVisible(false);
               setShowDeleteDialog(true);
             }}
-            title="Verwijderen"
+            title={t('delete')}
             leadingIcon="delete"
           />
         </Menu>
@@ -244,9 +246,9 @@ export default function OrderDetailScreen({ route, navigation }) {
           }
         >
           <Card.Title
-            title="Klantinformatie"
+            title={t('customerInfo')}
             titleStyle={{ color: colors.onSurface }}
-            subtitle="Tik om klantdetails te bekijken"
+            subtitle={t('tapToViewCustomer')}
             subtitleStyle={{ color: colors.onSurfaceVariant }}
             left={(props) => <Icon {...props} name="account" size={24} color={colors.onSurfaceVariant} />}
             right={(props) => (
@@ -255,24 +257,24 @@ export default function OrderDetailScreen({ route, navigation }) {
           />
           <Card.Content>
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Naam:</Text>
+              <Text style={styles.infoLabel}>{t('name')}:</Text>
               <Text style={styles.infoValue}>{customer.name}</Text>
             </View>
             {customer.email && (
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Email:</Text>
+                <Text style={styles.infoLabel}>{t('email')}:</Text>
                 <Text style={styles.infoValue}>{customer.email}</Text>
               </View>
             )}
             {customer.phone && (
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Telefoon:</Text>
+                <Text style={styles.infoLabel}>{t('phone')}:</Text>
                 <Text style={styles.infoValue}>{customer.phone}</Text>
               </View>
             )}
             {customer.address && (
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Adres:</Text>
+                <Text style={styles.infoLabel}>{t('address')}:</Text>
                 <Text style={styles.infoValue}>{customer.address}</Text>
               </View>
             )}
@@ -282,7 +284,7 @@ export default function OrderDetailScreen({ route, navigation }) {
         {/* Order Details */}
         <Card style={[styles.card, { backgroundColor: colors.surface }]}>
           <Card.Title
-            title="Order Details"
+            title={t('orderDetails')}
             titleStyle={{ color: colors.onSurface }}
             left={(props) => <Icon {...props} name="receipt" size={24} color={colors.primary} />}
           />
@@ -292,7 +294,7 @@ export default function OrderDetailScreen({ route, navigation }) {
                 <View style={styles.eggRow}>
                   <View style={styles.eggInfo}>
                     <Icon name="egg" size={20} color={colors.onSurfaceVariant} />
-                    <Text style={[styles.eggLabel, { color: colors.onSurface }]}>Kleine Eieren</Text>
+                    <Text style={[styles.eggLabel, { color: colors.onSurface }]}>{t('eggsSmall')}</Text>
                   </View>
                   <Text style={[styles.eggValue, { color: colors.onSurface }]}>{order.eggsSmall}</Text>
                 </View>
@@ -301,7 +303,7 @@ export default function OrderDetailScreen({ route, navigation }) {
                 <View style={styles.eggRow}>
                   <View style={styles.eggInfo}>
                     <Icon name="egg" size={24} color={colors.onSurfaceVariant} />
-                    <Text style={[styles.eggLabel, { color: colors.onSurface }]}>Middelgrote Eieren</Text>
+                    <Text style={[styles.eggLabel, { color: colors.onSurface }]}>{t('eggsMedium')}</Text>
                   </View>
                   <Text style={[styles.eggValue, { color: colors.onSurface }]}>{order.eggsMedium}</Text>
                 </View>
@@ -310,7 +312,7 @@ export default function OrderDetailScreen({ route, navigation }) {
                 <View style={styles.eggRow}>
                   <View style={styles.eggInfo}>
                     <Icon name="egg" size={28} color={colors.onSurfaceVariant} />
-                    <Text style={[styles.eggLabel, { color: colors.onSurface }]}>Grote Eieren</Text>
+                    <Text style={[styles.eggLabel, { color: colors.onSurface }]}>{t('eggsLarge')}</Text>
                   </View>
                   <Text style={[styles.eggValue, { color: colors.onSurface }]}>{order.eggsLarge}</Text>
                 </View>
@@ -319,7 +321,7 @@ export default function OrderDetailScreen({ route, navigation }) {
                 <View style={styles.eggRow}>
                   <View style={styles.eggInfo}>
                     <Icon name="egg-off" size={24} color="#F44336" />
-                    <Text style={[styles.eggLabel, { color: colors.onSurface }]}>Afgekeurd</Text>
+                    <Text style={[styles.eggLabel, { color: colors.onSurface }]}>{t('rejected')}</Text>
                   </View>
                   <Text style={[styles.eggValue, { color: colors.onSurface }]}>{order.eggsRejected}</Text>
                 </View>
@@ -329,12 +331,12 @@ export default function OrderDetailScreen({ route, navigation }) {
             <Divider style={styles.divider} />
 
             <View style={styles.totalRow}>
-              <Text style={[styles.totalLabel, { color: colors.onSurface }]}>Totaal aantal eieren:</Text>
+              <Text style={[styles.totalLabel, { color: colors.onSurface }]}>{t('totalEggsCount')}:</Text>
               <Text style={[styles.totalValue, { color: colors.onSurface }]}>{totalEggs}</Text>
             </View>
 
             <View style={styles.totalRow}>
-              <Text style={[styles.priceLabel, { color: colors.primary }]}>Totaalprijs:</Text>
+              <Text style={[styles.priceLabel, { color: colors.primary }]}>{t('totalPrice')}:</Text>
               <Text style={[styles.priceValue, { color: colors.primary }]}>
                 €{order.totalPrice.toFixed(2)}
               </Text>
@@ -346,7 +348,7 @@ export default function OrderDetailScreen({ route, navigation }) {
         {order.notes && (
           <Card style={[styles.card, { backgroundColor: colors.surface }]}>
             <Card.Title
-              title="Notities"
+              title={t('notes')}
               titleStyle={{ color: colors.onSurface }}
               left={(props) => <Icon {...props} name="note-text" size={24} color={colors.primary} />}
             />
@@ -359,7 +361,7 @@ export default function OrderDetailScreen({ route, navigation }) {
         {/* Order Timeline */}
         <Card style={[styles.card, { backgroundColor: colors.surface }]}>
           <Card.Title
-            title="Order Status"
+            title={t('orderStatus')}
             titleStyle={{ color: colors.onSurface }}
             left={(props) => <Icon {...props} name="timeline" size={24} color={colors.primary} />}
           />
@@ -369,7 +371,7 @@ export default function OrderDetailScreen({ route, navigation }) {
                 <View
                   style={[styles.timelineDot, { backgroundColor: "#4CAF50" }]}
                 />
-                <Text style={styles.timelineText}>Order aangemaakt</Text>
+                <Text style={styles.timelineText}>{t('orderCreated')}</Text>
                 <Text style={styles.timelineDate}>
                   {new Date(order.saleTime).toLocaleString("nl-NL")}
                 </Text>
@@ -401,7 +403,7 @@ export default function OrderDetailScreen({ route, navigation }) {
               buttonColor="#4CAF50"
               icon="check"
             >
-              Bevestigen
+              {t('confirmOrder')}
             </Button>
             <Button
               mode="outlined"
@@ -410,7 +412,7 @@ export default function OrderDetailScreen({ route, navigation }) {
               textColor="#F44336"
               icon="close"
             >
-              Annuleren
+              {t('cancelOrder')}
             </Button>
           </View>
         )}
@@ -423,7 +425,7 @@ export default function OrderDetailScreen({ route, navigation }) {
             buttonColor="#2196F3"
             icon="truck-delivery"
           >
-            Markeer als geleverd
+            {t('markAsDelivered')}
           </Button>
         )}
       </ScrollView>
@@ -435,14 +437,14 @@ export default function OrderDetailScreen({ route, navigation }) {
           onDismiss={() => setShowEditDialog(false)}
           style={styles.dialog}
         >
-          <Dialog.Title>Order Bewerken</Dialog.Title>
+          <Dialog.Title>{t('editOrder')}</Dialog.Title>
           <Dialog.Content>
             <ScrollView
               keyboardShouldPersistTaps="handled"
               nestedScrollEnabled={true}
             >
               <TextInput
-                label="Kleine Eieren"
+                label={t('eggsSmall')}
                 value={editedOrder?.eggsSmall || ""}
                 onChangeText={(text) =>
                   setEditedOrder({ ...editedOrder, eggsSmall: text })
@@ -453,7 +455,7 @@ export default function OrderDetailScreen({ route, navigation }) {
               />
 
               <TextInput
-                label="Middelgrote Eieren"
+                label={t('eggsMedium')}
                 value={editedOrder?.eggsMedium || ""}
                 onChangeText={(text) =>
                   setEditedOrder({ ...editedOrder, eggsMedium: text })
@@ -464,7 +466,7 @@ export default function OrderDetailScreen({ route, navigation }) {
               />
 
               <TextInput
-                label="Grote Eieren"
+                label={t('eggsLarge')}
                 value={editedOrder?.eggsLarge || ""}
                 onChangeText={(text) =>
                   setEditedOrder({ ...editedOrder, eggsLarge: text })
@@ -475,7 +477,7 @@ export default function OrderDetailScreen({ route, navigation }) {
               />
 
               <TextInput
-                label="Afgekeurd"
+                label={t('rejected')}
                 value={editedOrder?.eggsRejected || ""}
                 onChangeText={(text) =>
                   setEditedOrder({ ...editedOrder, eggsRejected: text })
@@ -486,7 +488,7 @@ export default function OrderDetailScreen({ route, navigation }) {
               />
 
               <TextInput
-                label="Totaalprijs (€)"
+                label={`${t('totalPrice')} (€)`}
                 value={editedOrder?.totalPrice || ""}
                 onChangeText={(text) =>
                   setEditedOrder({ ...editedOrder, totalPrice: text })
@@ -497,7 +499,7 @@ export default function OrderDetailScreen({ route, navigation }) {
               />
 
               <TextInput
-                label="Notities"
+                label={t('notes')}
                 value={editedOrder?.notes || ""}
                 onChangeText={(text) =>
                   setEditedOrder({ ...editedOrder, notes: text })
@@ -510,8 +512,8 @@ export default function OrderDetailScreen({ route, navigation }) {
             </ScrollView>
           </Dialog.Content>
           <Dialog.Actions>
-            <Button onPress={() => setShowEditDialog(false)}>Annuleren</Button>
-            <Button onPress={handleUpdateOrder}>Opslaan</Button>
+            <Button onPress={() => setShowEditDialog(false)}>{t('cancel')}</Button>
+            <Button onPress={handleUpdateOrder}>{t('save')}</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>
@@ -522,19 +524,19 @@ export default function OrderDetailScreen({ route, navigation }) {
           visible={showDeleteDialog}
           onDismiss={() => setShowDeleteDialog(false)}
         >
-          <Dialog.Title>Order Verwijderen</Dialog.Title>
+          <Dialog.Title>{t('deleteOrder')}</Dialog.Title>
           <Dialog.Content>
-            <Text>Weet je zeker dat je deze order wilt verwijderen?</Text>
+            <Text>{t('confirmDeleteOrder')}</Text>
             <Text style={styles.deleteWarning}>
-              Deze actie kan niet ongedaan worden gemaakt.
+              {t('cannotUndo')}
             </Text>
           </Dialog.Content>
           <Dialog.Actions>
             <Button onPress={() => setShowDeleteDialog(false)}>
-              Annuleren
+              {t('cancel')}
             </Button>
             <Button onPress={handleDeleteOrder} textColor="#F44336">
-              Verwijderen
+              {t('delete')}
             </Button>
           </Dialog.Actions>
         </Dialog>

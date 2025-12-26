@@ -13,10 +13,12 @@ import { TextInput, Card } from "react-native-paper";
 import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
 import authService from "../services/authService";
 import { useTheme } from "../context/ThemeContext";
+import { useSettings } from "../context/SettingsContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function LoginScreen({ navigation }) {
   const { isDarkMode, colors } = useTheme();
+  const { t } = useSettings();
   const insets = useSafeAreaInsets();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -25,7 +27,7 @@ export default function LoginScreen({ navigation }) {
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
-      Alert.alert("Fout", "Vul gebruikersnaam en wachtwoord in");
+      Alert.alert(t('error'), t('fillCredentials'));
       return;
     }
 
@@ -35,14 +37,11 @@ export default function LoginScreen({ navigation }) {
       const userData = await authService.login(username, password);
 
       // Login successful - App.js will handle navigation via auth state change
-      // Just show success message
-      Alert.alert("Welkom!", `Succesvol ingelogd als ${userData.username}`);
+      Alert.alert(t('success'), t('loginSuccess') + ' ' + userData.username);
 
-      // Force a re-render by clearing and re-checking auth
-      // The App.js useEffect will pick this up and navigate to MainTabs
     } catch (error) {
       console.error("Login error:", error);
-      Alert.alert("Fout", error.message || "Inloggen mislukt");
+      Alert.alert(t('error'), error.message || t('invalidCredentials'));
     } finally {
       setLoading(false);
     }
@@ -59,16 +58,16 @@ export default function LoginScreen({ navigation }) {
             <Icon name="egg" size={60} color="#fff" />
           </View>
           <Text style={[styles.appName, { color: colors.primary }]}>EggSense</Text>
-          <Text style={[styles.tagline, { color: colors.onSurfaceVariant }]}>Professioneel Kippenstal Beheer</Text>
+          <Text style={[styles.tagline, { color: colors.onSurfaceVariant }]}>{t('heroTagline')}</Text>
         </View>
 
         <Card style={[styles.card, { backgroundColor: colors.surface }]}>
           <Card.Content>
-            <Text style={[styles.welcomeText, { color: colors.onSurface }]}>Welkom terug!</Text>
-            <Text style={[styles.subtitle, { color: colors.onSurfaceVariant }]}>Log in om door te gaan</Text>
+            <Text style={[styles.welcomeText, { color: colors.onSurface }]}>{t('welcomeBack')}</Text>
+            <Text style={[styles.subtitle, { color: colors.onSurfaceVariant }]}>{t('loginToContinue')}</Text>
 
             <TextInput
-              label="Gebruikersnaam"
+              label={t('username')}
               value={username}
               onChangeText={setUsername}
               autoCapitalize="none"
@@ -81,7 +80,7 @@ export default function LoginScreen({ navigation }) {
             />
 
             <TextInput
-              label="Wachtwoord"
+              label={t('password')}
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
@@ -115,7 +114,7 @@ export default function LoginScreen({ navigation }) {
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.loginButtonText}>Inloggen</Text>
+                <Text style={styles.loginButtonText}>{t('login')}</Text>
               )}
             </TouchableOpacity>
           </Card.Content>
@@ -126,7 +125,7 @@ export default function LoginScreen({ navigation }) {
             style={[styles.footerText, { color: colors.onSurfaceVariant }]}
             accessibilityRole="text"
           >
-            Nog geen account? Neem contact op met je beheerder
+            {t('noAccount')}
           </Text>
         </View>
       </View>

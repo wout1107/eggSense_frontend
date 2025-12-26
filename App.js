@@ -10,7 +10,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 // Context providers
 import { ThemeProvider, useTheme } from "./src/context/ThemeContext";
-import { SettingsProvider } from "./src/context/SettingsContext";
+import { SettingsProvider, useSettings } from "./src/context/SettingsContext";
 
 // Import screens
 import WelcomeScreen from "./src/screens/WelcomeScreen";
@@ -34,6 +34,7 @@ const Tab = createBottomTabNavigator();
 
 function MainTabs() {
   const { isDarkMode, colors } = useTheme();
+  const { t } = useSettings();
 
   return (
     <Tab.Navigator
@@ -66,32 +67,32 @@ function MainTabs() {
         name="Dashboard"
         component={DashboardScreen}
         options={{
-          title: "Dashboard",
-          tabBarAccessibilityLabel: "Dashboard tab, overzicht van productie en statistieken",
+          title: t('dashboard'),
+          tabBarAccessibilityLabel: t('dashboard'),
         }}
       />
       <Tab.Screen
         name="Sales"
         component={SalesScreen}
         options={{
-          title: "Verkoop",
-          tabBarAccessibilityLabel: "Verkoop tab, beheer orders en verkopen",
+          title: t('sales'),
+          tabBarAccessibilityLabel: t('sales'),
         }}
       />
       <Tab.Screen
         name="Customers"
         component={CustomersListScreen}
         options={{
-          title: "Klanten",
-          tabBarAccessibilityLabel: "Klanten tab, bekijk en beheer klantenlijst",
+          title: t('customers'),
+          tabBarAccessibilityLabel: t('customers'),
         }}
       />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
         options={{
-          title: "Profiel",
-          tabBarAccessibilityLabel: "Profiel tab, accountinstellingen en uitloggen",
+          title: t('profile'),
+          tabBarAccessibilityLabel: t('profile'),
         }}
       />
     </Tab.Navigator>

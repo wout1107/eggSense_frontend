@@ -5,7 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // - Docker/K8s with nginx proxy: use "/api" (via EXPO_PUBLIC_API_BASE env var)
 // - iOS Simulator: use "http://localhost:8080/api"
 // - Physical device (same network): use "http://YOUR_IP:8080/api"
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE || "/api";
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE || "https://javabackend.devriesesoftware.be/api";
 
 const api = axios.create({
   baseURL: API_BASE_URL,

@@ -12,10 +12,12 @@ import {
 import productionService from "../services/productionService";
 import stallService from "../services/stallService";
 import { useTheme } from "../context/ThemeContext";
+import { useSettings } from "../context/SettingsContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function DailyInputScreen({ navigation, route }) {
   const { isDarkMode, colors } = useTheme();
+  const { t } = useSettings();
   const insets = useSafeAreaInsets();
   const { selectedStallId } = route.params || {};
 
@@ -57,20 +59,20 @@ export default function DailyInputScreen({ navigation, route }) {
       } else if (stallList.length > 0) {
         setSelectedStall(stallList[0].id);
         Alert.alert(
-          "Let op",
-          "Er zijn geen actieve stallen. Selecteer een inactieve stal of activeer een stal in de instellingen."
+          t('attention'),
+          t('noActiveStalls')
         );
       } else {
         Alert.alert(
-          "Geen Stallen",
-          "Er zijn nog geen stallen aangemaakt. Maak eerst een stal aan in de instellingen.",
+          t('noStallsWarning'),
+          t('noStallsCreated'),
           [
             {
-              text: "Naar Instellingen",
+              text: t('goToSettings'),
               onPress: () => navigation.navigate("Settings"),
             },
             {
-              text: "Annuleren",
+              text: t('cancel'),
               onPress: () => navigation.goBack(),
               style: "cancel",
             },
@@ -79,19 +81,19 @@ export default function DailyInputScreen({ navigation, route }) {
       }
     } catch (error) {
       console.error("Error loading stalls:", error);
-      Alert.alert("Fout", "Kon stallen niet ophalen");
+      Alert.alert(t('error'), t('couldNotLoadStallsDaily'));
     }
   };
 
   const handleSave = async () => {
     // Validate input
     if (!eggData.small && !eggData.medium && !eggData.large) {
-      Alert.alert("Fout", "Voer minimaal één eieren categorie in");
+      Alert.alert(t('error'), t('enterAtLeastOneCategory'));
       return;
     }
 
     if (!selectedStall) {
-      Alert.alert("Fout", "Selecteer een stal");
+      Alert.alert(t('error'), t('selectAStall'));
       return;
     }
 
@@ -122,8 +124,8 @@ export default function DailyInputScreen({ navigation, route }) {
         stalls.find((s) => s.id === selectedStall)?.name || "Stal";
 
       Alert.alert(
-        "Gegevens Opgeslagen",
-        `Totaal ${totalEggs} eieren geregistreerd voor ${selectedStallName} op ${new Date().toLocaleDateString(
+        t('dataSaved'),
+        `${t('totalEggs')} ${totalEggs} ${t('eggs')} ${selectedStallName} ${new Date().toLocaleDateString(
           "nl-NL"
         )}`,
         [
@@ -141,7 +143,7 @@ export default function DailyInputScreen({ navigation, route }) {
         ]
       );
     } catch (error) {
-      Alert.alert("Fout", error.message || "Kon gegevens niet opslaan");
+      Alert.alert(t('error'), error.message || t('couldNotSaveData'));
     } finally {
       setIsLoading(false);
     }
@@ -160,8 +162,7 @@ export default function DailyInputScreen({ navigation, route }) {
         <Card style={[styles.card, { backgroundColor: colors.surface }]}>
           <Card.Content>
             <Text style={[styles.noStallsText, { color: colors.onSurfaceVariant }]}>
-              Geen stallen beschikbaar. Maak eerst een stal aan in de
-              instellingen.
+              {t('noStallsAvailable')}
             </Text>
             <Button
               mode="contained"
@@ -170,7 +171,7 @@ export default function DailyInputScreen({ navigation, route }) {
               buttonColor={colors.primary}
               icon="cog"
             >
-              Naar Instellingen
+              {t('goToSettings')}
             </Button>
           </Card.Content>
         </Card>
@@ -185,7 +186,7 @@ export default function DailyInputScreen({ navigation, route }) {
         <Card style={[styles.stallCard, { backgroundColor: colors.surface }]}>
           <Card.Content>
             <View style={styles.singleStallHeader}>
-              <Text style={[styles.stallLabel, { color: colors.primary }]}>Stal:</Text>
+              <Text style={[styles.stallLabel, { color: colors.primary }]}>{t('stalls')}:</Text>
               <Chip
                 mode="flat"
                 icon="barn"
@@ -201,7 +202,7 @@ export default function DailyInputScreen({ navigation, route }) {
             </Text>
             {isPreSelected && (
               <Text style={styles.preSelectedText}>
-                Automatisch geselecteerd van Dashboard
+                {t('autoSelectedFromDashboard')}
               </Text>
             )}
           </Card.Content>
@@ -213,10 +214,10 @@ export default function DailyInputScreen({ navigation, route }) {
     return (
       <Card style={[styles.stallCard, { backgroundColor: colors.surface }]}>
         <Card.Content>
-          <Title style={[styles.stallSelectorTitle, { color: colors.primary }]}>Selecteer Stal</Title>
+          <Title style={[styles.stallSelectorTitle, { color: colors.primary }]}>{t('selectStall')}</Title>
           {selectedStallId && (
             <Text style={styles.preSelectedHint}>
-              ✓ Stal geselecteerd van Dashboard
+              ✓ {t('stallSelectedFromDashboard')}
             </Text>
           )}
           <View style={styles.stallChipsContainer}>
@@ -245,8 +246,8 @@ export default function DailyInputScreen({ navigation, route }) {
           {selectedStall && (
             <View style={[styles.selectedStallInfo, { backgroundColor: isDarkMode ? '#1B5E20' : '#E8F5E9' }]}>
               <Text style={[styles.selectedStallInfoText, { color: colors.primary }]}>
-                Capaciteit:{" "}
-                {stalls.find((s) => s.id === selectedStall)?.capacity} kippen
+                {t('capacity')}:{" "}
+                {stalls.find((s) => s.id === selectedStall)?.capacity} {t('chickens')}
               </Text>
             </View>
           )}
@@ -258,7 +259,7 @@ export default function DailyInputScreen({ navigation, route }) {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: isDarkMode ? '#333' : '#e0e0e0', paddingTop: insets.top }]}>
-        <Text style={[styles.headerTitle, { color: colors.primary }]}>Dagelijkse Invoer</Text>
+        <Text style={[styles.headerTitle, { color: colors.primary }]}>{t('dailyInput')}</Text>
         <IconButton
           icon="close"
           size={24}
@@ -289,9 +290,9 @@ export default function DailyInputScreen({ navigation, route }) {
           <>
             <Card style={[styles.card, { backgroundColor: colors.surface }]}>
               <Card.Content>
-                <Title style={[styles.cardTitle, { color: colors.primary }]}>Eieren Productie</Title>
+                <Title style={[styles.cardTitle, { color: colors.primary }]}>{t('eggProduction')}</Title>
                 <TextInput
-                  label="Kleine eieren (S)"
+                  label={t('smallEggsS')}
                   value={eggData.small}
                   onChangeText={(text) =>
                     setEggData({ ...eggData, small: text })
@@ -302,7 +303,7 @@ export default function DailyInputScreen({ navigation, route }) {
                   left={<TextInput.Icon icon="egg" color={colors.onSurfaceVariant} />}
                 />
                 <TextInput
-                  label="Middelgrote eieren (M)"
+                  label={t('mediumEggsM')}
                   value={eggData.medium}
                   onChangeText={(text) =>
                     setEggData({ ...eggData, medium: text })
@@ -313,7 +314,7 @@ export default function DailyInputScreen({ navigation, route }) {
                   left={<TextInput.Icon icon="egg" color={colors.onSurfaceVariant} />}
                 />
                 <TextInput
-                  label="Grote eieren (L)"
+                  label={t('largeEggsL')}
                   value={eggData.large}
                   onChangeText={(text) =>
                     setEggData({ ...eggData, large: text })
@@ -324,12 +325,12 @@ export default function DailyInputScreen({ navigation, route }) {
                   left={<TextInput.Icon icon="egg" color={colors.onSurfaceVariant} />}
                 />
                 <View style={[styles.totalEggsContainer, { backgroundColor: isDarkMode ? '#1B5E20' : '#E8F5E9' }]}>
-                  <Text style={[styles.totalEggsLabel, { color: colors.primary }]}>Totaal:</Text>
+                  <Text style={[styles.totalEggsLabel, { color: colors.primary }]}>{t('totalEggs')}:</Text>
                   <Text style={[styles.totalEggsValue, { color: colors.primary }]}>
                     {parseInt(eggData.small || 0) +
                       parseInt(eggData.medium || 0) +
                       parseInt(eggData.large || 0) || 0}{" "}
-                    eieren
+                    {t('eggs')}
                   </Text>
                 </View>
               </Card.Content>
@@ -337,9 +338,9 @@ export default function DailyInputScreen({ navigation, route }) {
 
             <Card style={[styles.card, { backgroundColor: colors.surface }]}>
               <Card.Content>
-                <Title style={[styles.cardTitle, { color: colors.primary }]}>Verbruik</Title>
+                <Title style={[styles.cardTitle, { color: colors.primary }]}>{t('consumption')}</Title>
                 <TextInput
-                  label="Voer verbruik (kg)"
+                  label={t('feedConsumptionKg')}
                   value={feedConsumption}
                   onChangeText={setFeedConsumption}
                   keyboardType="numeric"
@@ -348,7 +349,7 @@ export default function DailyInputScreen({ navigation, route }) {
                   left={<TextInput.Icon icon="food-drumstick" color={colors.onSurfaceVariant} />}
                 />
                 <TextInput
-                  label="Water verbruik (liter)"
+                  label={t('waterConsumptionL')}
                   value={waterConsumption}
                   onChangeText={setWaterConsumption}
                   keyboardType="numeric"
@@ -361,9 +362,9 @@ export default function DailyInputScreen({ navigation, route }) {
 
             <Card style={[styles.card, { backgroundColor: colors.surface }]}>
               <Card.Content>
-                <Title style={[styles.cardTitle, { color: colors.primary }]}>Uitval</Title>
+                <Title style={[styles.cardTitle, { color: colors.primary }]}>{t('mortalitySection')}</Title>
                 <TextInput
-                  label="Aantal uitgevallen kippen"
+                  label={t('numberOfCasualties')}
                   value={casualties}
                   onChangeText={setCasualties}
                   keyboardType="numeric"
@@ -383,7 +384,7 @@ export default function DailyInputScreen({ navigation, route }) {
               disabled={isLoading}
               icon="check"
             >
-              Gegevens Opslaan
+              {t('saveData')}
             </Button>
           </>
         )}

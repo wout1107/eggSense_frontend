@@ -21,10 +21,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import api from "../services/api";
 import stallService from "../services/stallService";
 import { useTheme } from "../context/ThemeContext";
+import { useSettings } from "../context/SettingsContext";
 
 export default function FeedDeliveryScreen() {
   const insets = useSafeAreaInsets();
   const { isDarkMode, colors } = useTheme();
+  const { t } = useSettings();
   const [deliveries, setDeliveries] = useState([]);
   const [stalls, setStalls] = useState([]);
   const [selectedStall, setSelectedStall] = useState(null);
@@ -55,7 +57,7 @@ export default function FeedDeliveryScreen() {
       }
     } catch (error) {
       console.error("Error loading feed deliveries:", error);
-      Alert.alert("Fout", "Kon voerleveringen niet ophalen");
+      Alert.alert(t('error'), t('couldNotLoadDeliveries'));
     } finally {
       setRefreshing(false);
     }
@@ -95,12 +97,12 @@ export default function FeedDeliveryScreen() {
 
   const handleCreateDelivery = async () => {
     if (!newDelivery.supplier.trim()) {
-      Alert.alert("Fout", "Vul een leverancier in");
+      Alert.alert(t('error'), t('supplierRequired'));
       return;
     }
 
     if (!newDelivery.quantityKg || parseFloat(newDelivery.quantityKg) <= 0) {
-      Alert.alert("Fout", "Vul een geldige hoeveelheid in");
+      Alert.alert(t('error'), t('validQuantityRequired'));
       return;
     }
 
@@ -122,10 +124,10 @@ export default function FeedDeliveryScreen() {
         notes: "",
       });
       await loadData();
-      Alert.alert("Succes", "Voerlevering succesvol aangemaakt");
+      Alert.alert(t('success'), t('deliveryCreated'));
     } catch (error) {
       console.error("Error creating feed delivery:", error);
-      Alert.alert("Fout", "Kon voerlevering niet aanmaken");
+      Alert.alert(t('error'), t('couldNotCreateDelivery'));
     }
   };
 
@@ -157,26 +159,26 @@ export default function FeedDeliveryScreen() {
         <Card.Content>
           <View style={styles.inventoryHeader}>
             <Icon name="warehouse" size={32} color={colors.primary} />
-            <Text style={[styles.inventoryTitle, { color: colors.primary }]}>Voorraad Overzicht</Text>
+            <Text style={[styles.inventoryTitle, { color: colors.primary }]}>{t('inventoryOverview')}</Text>
           </View>
           <View style={styles.inventoryStats}>
             <View style={styles.inventoryStat}>
               <Text style={[styles.inventoryValue, { color: colors.onSurface }]}>
                 {inventory.currentStock?.toFixed(0) || 0} kg
               </Text>
-              <Text style={[styles.inventoryLabel, { color: colors.onSurfaceVariant }]}>Huidige voorraad</Text>
+              <Text style={[styles.inventoryLabel, { color: colors.onSurfaceVariant }]}>{t('currentStock')}</Text>
             </View>
             <View style={styles.inventoryStat}>
               <Text style={[styles.inventoryValue, { color: colors.onSurface }]}>
                 {inventory.avgDailyConsumption?.toFixed(1) || 0} kg/dag
               </Text>
-              <Text style={[styles.inventoryLabel, { color: colors.onSurfaceVariant }]}>Gemiddeld verbruik</Text>
+              <Text style={[styles.inventoryLabel, { color: colors.onSurfaceVariant }]}>{t('avgConsumption')}</Text>
             </View>
             <View style={styles.inventoryStat}>
               <Text style={[styles.inventoryValue, { color: colors.onSurface }]}>
                 {inventory.daysRemaining?.toFixed(0) || 0} dagen
               </Text>
-              <Text style={[styles.inventoryLabel, { color: colors.onSurfaceVariant }]}>Voorraad resterend</Text>
+              <Text style={[styles.inventoryLabel, { color: colors.onSurfaceVariant }]}>{t('stockRemaining')}</Text>
             </View>
           </View>
         </Card.Content>
@@ -216,7 +218,7 @@ export default function FeedDeliveryScreen() {
           )}
         </View>
 
-        {item.notes && <Text style={[styles.notes, { color: colors.onSurfaceVariant }]}>Notitie: {item.notes}</Text>}
+        {item.notes && <Text style={[styles.notes, { color: colors.onSurfaceVariant }]}>{t('noteLabel')}: {item.notes}</Text>}
       </Card.Content>
     </Card>
   );
@@ -224,7 +226,7 @@ export default function FeedDeliveryScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: isDarkMode ? '#333' : '#e0e0e0', paddingTop: insets.top }]}>
-        <Text style={[styles.title, { color: colors.primary }]}>Voerleveringen</Text>
+        <Text style={[styles.title, { color: colors.primary }]}>{t('feedDeliveries')}</Text>
       </View>
 
       {renderStallSelector()}
@@ -241,7 +243,7 @@ export default function FeedDeliveryScreen() {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Icon name="truck-delivery-outline" size={64} color={colors.onSurfaceVariant} />
-            <Text style={[styles.emptyText, { color: colors.onSurfaceVariant }]}>Geen leveringen gevonden</Text>
+            <Text style={[styles.emptyText, { color: colors.onSurfaceVariant }]}>{t('noDeliveriesFound')}</Text>
           </View>
         }
       />
@@ -250,16 +252,16 @@ export default function FeedDeliveryScreen() {
         icon="plus"
         style={[styles.fab, { backgroundColor: colors.primary }]}
         onPress={() => setShowDialog(true)}
-        label="Nieuwe Levering"
+        label={t('newDelivery')}
       />
 
       <Portal>
         <Dialog visible={showDialog} onDismiss={() => setShowDialog(false)}>
-          <Dialog.Title>Nieuwe Voerlevering</Dialog.Title>
+          <Dialog.Title>{t('newFeedDelivery')}</Dialog.Title>
           <Dialog.ScrollArea>
             <View style={styles.dialogContent}>
               <TextInput
-                label="Leverancier *"
+                label={`${t('supplier')} *`}
                 value={newDelivery.supplier}
                 onChangeText={(text) =>
                   setNewDelivery({ ...newDelivery, supplier: text })
@@ -268,7 +270,7 @@ export default function FeedDeliveryScreen() {
               />
 
               <TextInput
-                label="Hoeveelheid (kg) *"
+                label={`${t('quantityKg')} *`}
                 value={newDelivery.quantityKg}
                 onChangeText={(text) =>
                   setNewDelivery({ ...newDelivery, quantityKg: text })
@@ -278,7 +280,7 @@ export default function FeedDeliveryScreen() {
               />
 
               <TextInput
-                label="Kosten (€)"
+                label={t('costEuro')}
                 value={newDelivery.cost}
                 onChangeText={(text) =>
                   setNewDelivery({ ...newDelivery, cost: text })
@@ -288,7 +290,7 @@ export default function FeedDeliveryScreen() {
               />
 
               <TextInput
-                label="Notities"
+                label={t('notes')}
                 value={newDelivery.notes}
                 onChangeText={(text) =>
                   setNewDelivery({ ...newDelivery, notes: text })
@@ -300,8 +302,8 @@ export default function FeedDeliveryScreen() {
             </View>
           </Dialog.ScrollArea>
           <Dialog.Actions>
-            <Button onPress={() => setShowDialog(false)}>Annuleren</Button>
-            <Button onPress={handleCreateDelivery}>Aanmaken</Button>
+            <Button onPress={() => setShowDialog(false)}>{t('cancel')}</Button>
+            <Button onPress={handleCreateDelivery}>{t('create')}</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>

@@ -6,10 +6,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import authService from "../services/authService";
 import { useTheme } from "../context/ThemeContext";
+import { useSettings } from "../context/SettingsContext";
 
 export default function ProfileScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { isDarkMode, colors } = useTheme();
+  const { t } = useSettings();
   const [user, setUser] = useState(null);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
@@ -50,7 +52,7 @@ export default function ProfileScreen({ navigation }) {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: isDarkMode ? '#333' : '#e0e0e0', paddingTop: insets.top }]}>
-        <Text style={[styles.title, { color: colors.primary }]}>Profiel</Text>
+        <Text style={[styles.title, { color: colors.primary }]}>{t('profile')}</Text>
       </View>
 
       <ScrollView style={styles.content}>
@@ -73,7 +75,7 @@ export default function ProfileScreen({ navigation }) {
         {/* Account Information */}
         <Card style={[styles.card, { backgroundColor: colors.surface }]}>
           <Card.Title
-            title="Account Informatie"
+            title={t('accountInfo')}
             titleStyle={{ color: colors.onSurface }}
             left={(props) => (
               <Icon {...props} name="account-details" size={24} color={colors.onSurfaceVariant} />
@@ -81,7 +83,7 @@ export default function ProfileScreen({ navigation }) {
           />
           <Card.Content>
             <List.Item
-              title="Gebruikersnaam"
+              title={t('username')}
               description={user?.username || "Niet beschikbaar"}
               titleStyle={{ color: colors.onSurface }}
               descriptionStyle={{ color: colors.onSurfaceVariant }}
@@ -89,7 +91,7 @@ export default function ProfileScreen({ navigation }) {
             />
             <Divider style={{ backgroundColor: isDarkMode ? '#333' : '#e0e0e0' }} />
             <List.Item
-              title="Rol"
+              title={t('role')}
               description={user?.role || "Gebruiker"}
               titleStyle={{ color: colors.onSurface }}
               descriptionStyle={{ color: colors.onSurfaceVariant }}
@@ -101,14 +103,14 @@ export default function ProfileScreen({ navigation }) {
         {/* Settings & Management */}
         <Card style={[styles.card, { backgroundColor: colors.surface }]}>
           <Card.Title
-            title="Beheer"
+            title={t('management')}
             titleStyle={{ color: colors.onSurface }}
             left={(props) => <Icon {...props} name="cog" size={24} color={colors.onSurfaceVariant} />}
           />
           <Card.Content>
             <List.Item
-              title="Instellingen"
-              description="Stallen, app en account instellingen"
+              title={t('settings')}
+              description={t('settingsDesc')}
               titleStyle={{ color: colors.onSurface }}
               descriptionStyle={{ color: colors.onSurfaceVariant }}
               left={(props) => <List.Icon {...props} icon="cog-outline" color={colors.onSurfaceVariant} />}
@@ -117,8 +119,8 @@ export default function ProfileScreen({ navigation }) {
             />
             <Divider style={{ backgroundColor: isDarkMode ? '#333' : '#e0e0e0' }} />
             <List.Item
-              title="Over EggSense"
-              description="Versie en app informatie"
+              title={t('about')}
+              description={t('versionInfo')}
               titleStyle={{ color: colors.onSurface }}
               descriptionStyle={{ color: colors.onSurfaceVariant }}
               left={(props) => (
@@ -134,8 +136,8 @@ export default function ProfileScreen({ navigation }) {
             />
             <Divider style={{ backgroundColor: isDarkMode ? '#333' : '#e0e0e0' }} />
             <List.Item
-              title="Privacy Beleid"
-              description="Gegevensbescherming en privacy"
+              title={t('privacyPolicy')}
+              description={t('privacy')}
               titleStyle={{ color: colors.onSurface }}
               descriptionStyle={{ color: colors.onSurfaceVariant }}
               left={(props) => <List.Icon {...props} icon="shield-lock" color={colors.onSurfaceVariant} />}
@@ -149,8 +151,8 @@ export default function ProfileScreen({ navigation }) {
             />
             <Divider style={{ backgroundColor: isDarkMode ? '#333' : '#e0e0e0' }} />
             <List.Item
-              title="Hulp & Support"
-              description="Contact opnemen met support"
+              title={t('helpSupport')}
+              description={t('contactSupport')}
               titleStyle={{ color: colors.onSurface }}
               descriptionStyle={{ color: colors.onSurfaceVariant }}
               left={(props) => <List.Icon {...props} icon="help-circle" color={colors.onSurfaceVariant} />}
@@ -168,13 +170,13 @@ export default function ProfileScreen({ navigation }) {
         {/* App Information */}
         <Card style={[styles.card, { backgroundColor: colors.surface }]}>
           <Card.Title
-            title="Applicatie"
+            title={t('application')}
             titleStyle={{ color: colors.onSurface }}
             left={(props) => <Icon {...props} name="information" size={24} color={colors.onSurfaceVariant} />}
           />
           <Card.Content>
             <List.Item
-              title="Versie"
+              title={t('version')}
               description="1.0.0"
               titleStyle={{ color: colors.onSurface }}
               descriptionStyle={{ color: colors.onSurfaceVariant }}
@@ -182,7 +184,7 @@ export default function ProfileScreen({ navigation }) {
             />
             <Divider style={{ backgroundColor: isDarkMode ? '#333' : '#e0e0e0' }} />
             <List.Item
-              title="Laatste update"
+              title={t('lastUpdate')}
               description="December 2024"
               titleStyle={{ color: colors.onSurface }}
               descriptionStyle={{ color: colors.onSurfaceVariant }}
@@ -199,7 +201,7 @@ export default function ProfileScreen({ navigation }) {
           buttonColor="#F44336"
           icon="logout"
         >
-          Uitloggen
+          {t('logout')}
         </Button>
 
         <View style={styles.footer}>
@@ -211,19 +213,19 @@ export default function ProfileScreen({ navigation }) {
       {/* Logout Confirmation Dialog - Works on all platforms including web */}
       <Portal>
         <Dialog visible={showLogoutDialog} onDismiss={() => setShowLogoutDialog(false)}>
-          <Dialog.Title>Uitloggen</Dialog.Title>
+          <Dialog.Title>{t('logout')}</Dialog.Title>
           <Dialog.Content>
             <Text style={{ color: isDarkMode ? colors.onSurface : '#333' }}>
-              Weet je zeker dat je wilt uitloggen?
+              {t('logoutConfirm')}
             </Text>
           </Dialog.Content>
           <Dialog.Actions>
-            <Button onPress={() => setShowLogoutDialog(false)}>Annuleren</Button>
+            <Button onPress={() => setShowLogoutDialog(false)}>{t('cancel')}</Button>
             <Button
               onPress={confirmLogout}
               textColor="#F44336"
             >
-              Uitloggen
+              {t('logout')}
             </Button>
           </Dialog.Actions>
         </Dialog>

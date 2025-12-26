@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   RefreshControl,
   Alert,
   ScrollView,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 import {
   Card,
@@ -25,10 +27,18 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import salesService from "../services/salesService";
 import customerService from "../services/customerService";
 import { useTheme } from "../context/ThemeContext";
+import { useSettings } from "../context/SettingsContext";
 
 export default function SalesScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { isDarkMode, colors } = useTheme();
+  const { t } = useSettings();
+
+  // Refs for keyboard navigation
+  const eggsMediumRef = useRef(null);
+  const eggsLargeRef = useRef(null);
+  const totalPriceRef = useRef(null);
+  const notesRef = useRef(null);
 
   const [sales, setSales] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -70,7 +80,7 @@ export default function SalesScreen({ navigation }) {
       setCustomers(customersData);
     } catch (error) {
       console.error("Error loading sales data:", error);
-      Alert.alert("Fout", "Kon verkoopgegevens niet ophalen");
+      Alert.alert(t('error'), t('couldNotLoadSales'));
     } finally {
       setRefreshing(false);
     }
@@ -100,10 +110,10 @@ export default function SalesScreen({ navigation }) {
     // Status values must match backend SaleStatus enum: CREATED, CONFIRMED, PAID, CANCELLED
     const statusOrder = ['CREATED', 'CONFIRMED', 'PAID', 'CANCELLED'];
     const statusLabels = {
-      'CREATED': '🟠 In Behandeling',
-      'CONFIRMED': '🔵 Bevestigd',
-      'PAID': '🟢 Betaald',
-      'CANCELLED': '🔴 Geannuleerd',
+      'CREATED': `🟠 ${t('inProgress')}`,
+      'CONFIRMED': `🔵 ${t('confirmed')}`,
+      'PAID': `🟢 ${t('paid')}`,
+      'CANCELLED': `🔴 ${t('cancelled')}`,
     };
 
     const grouped = filteredSales.reduce((acc, sale) => {
@@ -132,7 +142,7 @@ export default function SalesScreen({ navigation }) {
 
   const handleCreateCustomer = async () => {
     if (!newCustomer.name.trim()) {
-      Alert.alert("Fout", "Vul een naam in voor de klant");
+      Alert.alert(t('error'), t('enterCustomerName'));
       return;
     }
 
@@ -157,16 +167,16 @@ export default function SalesScreen({ navigation }) {
         address: "",
         notes: "",
       });
-      Alert.alert("Succes", "Klant succesvol aangemaakt");
+      Alert.alert(t('success'), t('customerSuccessfullyCreated'));
     } catch (error) {
       console.error("Error creating customer:", error);
-      Alert.alert("Fout", "Kon klant niet aanmaken");
+      Alert.alert(t('error'), t('couldNotCreateCustomer'));
     }
   };
 
   const handleCreateSale = async () => {
     if (!newSale.customerId) {
-      Alert.alert("Fout", "Selecteer een klant");
+      Alert.alert(t('error'), t('selectACustomer'));
       return;
     }
 
@@ -178,7 +188,7 @@ export default function SalesScreen({ navigation }) {
     const totalEggs = eggsSmall + eggsMedium + eggsLarge;
 
     if (totalEggs === 0) {
-      Alert.alert("Fout", "Voer minstens één type ei in");
+      Alert.alert(t('error'), t('enterAtLeastOneEgg'));
       return;
     }
 
@@ -215,10 +225,10 @@ export default function SalesScreen({ navigation }) {
         notes: "",
       });
       await loadData();
-      Alert.alert("Succes", "Verkoop succesvol aangemaakt");
+      Alert.alert(t('success'), t('saleCreated'));
     } catch (error) {
       console.error("Error creating sale:", error);
-      Alert.alert("Fout", "Kon verkoop niet aanmaken");
+      Alert.alert(t('error'), t('couldNotCreateSale'));
     }
   };
 
@@ -226,10 +236,10 @@ export default function SalesScreen({ navigation }) {
     try {
       await salesService.updateStatus(saleId, newStatus);
       await loadData();
-      Alert.alert("Succes", "Status bijgewerkt");
+      Alert.alert(t('success'), t('statusUpdated'));
     } catch (error) {
       console.error("Error updating status:", error);
-      Alert.alert("Fout", "Kon status niet bijwerken");
+      Alert.alert(t('error'), t('couldNotUpdateStatus'));
     }
   };
 
@@ -251,13 +261,13 @@ export default function SalesScreen({ navigation }) {
   const getStatusLabel = (status) => {
     switch (status) {
       case "CREATED":
-        return "In behandeling";
+        return t('inProgress');
       case "CONFIRMED":
-        return "Bevestigd";
+        return t('confirmed');
       case "PAID":
-        return "Geleverd";
+        return t('delivered');
       case "CANCELLED":
-        return "Geannuleerd";
+        return t('cancelled');
       default:
         return status;
     }
@@ -301,7 +311,7 @@ export default function SalesScreen({ navigation }) {
                   })
                 }
               >
-                {customer?.name || "Onbekende klant"}
+                {customer?.name || t('unknownCustomer')}
               </Text>
               <Text style={[styles.saleDate, { color: isDarkMode ? '#aaa' : '#666' }]}>
                 {new Date(item.saleTime).toLocaleDateString("nl-NL", {
@@ -346,7 +356,7 @@ export default function SalesScreen({ navigation }) {
           </View>
 
           <View style={[styles.saleFooter, { borderTopColor: isDarkMode ? '#333' : '#e0e0e0' }]}>
-            <Text style={[styles.totalEggs, { color: isDarkMode ? '#aaa' : '#666' }]}>Totaal: {totalEggs} eieren</Text>
+            <Text style={[styles.totalEggs, { color: isDarkMode ? '#aaa' : '#666' }]}>{t('totalEggs')}: {totalEggs} {t('eggs')}</Text>
             <Text style={[styles.totalPrice, { color: colors.primary }]}>€{item.totalPrice.toFixed(2)}</Text>
           </View>
 
@@ -358,7 +368,7 @@ export default function SalesScreen({ navigation }) {
                 style={styles.confirmButton}
                 buttonColor="#4CAF50"
               >
-                Bevestigen
+                {t('confirmOrder')}
               </Button>
               <Button
                 mode="outlined"
@@ -366,7 +376,7 @@ export default function SalesScreen({ navigation }) {
                 style={styles.cancelButton}
                 textColor="#F44336"
               >
-                Annuleren
+                {t('cancelOrder')}
               </Button>
             </View>
           )}
@@ -378,7 +388,7 @@ export default function SalesScreen({ navigation }) {
               style={styles.deliverButton}
               buttonColor="#2196F3"
             >
-              Markeer als geleverd
+              {t('markAsDelivered')}
             </Button>
           )}
         </Card.Content>
@@ -389,9 +399,9 @@ export default function SalesScreen({ navigation }) {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: isDarkMode ? '#333' : '#e0e0e0', paddingTop: insets.top }]}>
-        <Text style={[styles.title, { color: colors.primary }]}>Verkoop</Text>
+        <Text style={[styles.title, { color: colors.primary }]}>{t('sales')}</Text>
         <Searchbar
-          placeholder="Zoek op klant of order #"
+          placeholder={t('searchByCustomer')}
           onChangeText={setSearchQuery}
           value={searchQuery}
           style={[styles.searchBar, { backgroundColor: isDarkMode ? colors.surfaceVariant : '#f5f5f5' }]}
@@ -403,10 +413,10 @@ export default function SalesScreen({ navigation }) {
           value={statusFilter}
           onValueChange={setStatusFilter}
           buttons={[
-            { value: "all", label: "Alle" },
-            { value: "CREATED", label: "In Behandeling" },
-            { value: "CONFIRMED", label: "Bevestigd" },
-            { value: "PAID", label: "Betaald" },
+            { value: "all", label: t('allStatus') },
+            { value: "CREATED", label: t('inProgress') },
+            { value: "CONFIRMED", label: t('confirmed') },
+            { value: "PAID", label: t('paid') },
           ]}
           style={styles.filterButtons}
         />
@@ -431,10 +441,10 @@ export default function SalesScreen({ navigation }) {
           <View style={styles.emptyContainer}>
             <Icon name="cart-off" size={64} color={isDarkMode ? '#555' : '#ccc'} />
             <Text style={[styles.emptyText, { color: isDarkMode ? '#888' : '#999' }]}>
-              Geen verkopen gevonden
+              {t('noSalesFound')}
             </Text>
             <Text style={[styles.emptySubtext, { color: isDarkMode ? '#666' : '#bbb' }]}>
-              Gegroepeerd op status
+              {t('groupedByStatus')}
             </Text>
           </View>
         }
@@ -444,7 +454,7 @@ export default function SalesScreen({ navigation }) {
         icon="plus"
         style={[styles.fab, { backgroundColor: colors.primary }]}
         onPress={() => setShowDialog(true)}
-        label="Nieuwe Verkoop"
+        label={t('newSale')}
         color="#fff"
       />
 
@@ -455,14 +465,14 @@ export default function SalesScreen({ navigation }) {
           onDismiss={() => setShowDialog(false)}
           style={styles.dialog}
         >
-          <Dialog.Title>Nieuwe Verkoop</Dialog.Title>
+          <Dialog.Title>{t('newSale')}</Dialog.Title>
           <Dialog.ScrollArea style={styles.scrollArea}>
             <ScrollView
               contentContainerStyle={styles.dialogContent}
               keyboardShouldPersistTaps="handled"
             >
               <View style={styles.customerSectionHeader}>
-                <Text style={styles.inputLabel}>Klant *</Text>
+                <Text style={styles.inputLabel}>{t('customer')} *</Text>
                 <IconButton
                   icon="account-plus"
                   size={24}
@@ -491,7 +501,7 @@ export default function SalesScreen({ navigation }) {
               </ScrollView>
 
               <TextInput
-                label="Kleine Eieren"
+                label={t('eggsSmall')}
                 value={newSale.eggsSmall}
                 onChangeText={(text) =>
                   setNewSale({ ...newSale, eggsSmall: text })
@@ -500,10 +510,12 @@ export default function SalesScreen({ navigation }) {
                 style={styles.input}
                 returnKeyType="next"
                 blurOnSubmit={false}
+                onSubmitEditing={() => eggsMediumRef.current?.focus()}
               />
 
               <TextInput
-                label="Middelgrote Eieren"
+                ref={eggsMediumRef}
+                label={t('eggsMedium')}
                 value={newSale.eggsMedium}
                 onChangeText={(text) =>
                   setNewSale({ ...newSale, eggsMedium: text })
@@ -512,10 +524,12 @@ export default function SalesScreen({ navigation }) {
                 style={styles.input}
                 returnKeyType="next"
                 blurOnSubmit={false}
+                onSubmitEditing={() => eggsLargeRef.current?.focus()}
               />
 
               <TextInput
-                label="Grote Eieren"
+                ref={eggsLargeRef}
+                label={t('eggsLarge')}
                 value={newSale.eggsLarge}
                 onChangeText={(text) =>
                   setNewSale({ ...newSale, eggsLarge: text })
@@ -524,33 +538,39 @@ export default function SalesScreen({ navigation }) {
                 style={styles.input}
                 returnKeyType="next"
                 blurOnSubmit={false}
+                onSubmitEditing={() => totalPriceRef.current?.focus()}
               />
 
               <TextInput
-                label="Totaalprijs (€)"
+                ref={totalPriceRef}
+                label={t('totalPrice') + " (€)"}
                 value={newSale.totalPrice}
                 onChangeText={(text) =>
                   setNewSale({ ...newSale, totalPrice: text })
                 }
                 keyboardType="decimal-pad"
                 style={styles.input}
-                returnKeyType="done"
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => notesRef.current?.focus()}
               />
 
               <TextInput
-                label="Notities"
+                ref={notesRef}
+                label={t('notes')}
                 value={newSale.notes}
                 onChangeText={(text) => setNewSale({ ...newSale, notes: text })}
                 multiline
                 numberOfLines={3}
                 style={styles.input}
                 returnKeyType="done"
+                onSubmitEditing={() => Keyboard.dismiss()}
               />
             </ScrollView>
           </Dialog.ScrollArea>
           <Dialog.Actions>
-            <Button onPress={() => setShowDialog(false)}>Annuleren</Button>
-            <Button onPress={handleCreateSale}>Aanmaken</Button>
+            <Button onPress={() => setShowDialog(false)}>{t('cancel')}</Button>
+            <Button onPress={handleCreateSale}>{t('createSale')}</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>
@@ -562,14 +582,14 @@ export default function SalesScreen({ navigation }) {
           onDismiss={() => setShowCustomerDialog(false)}
           style={styles.dialog}
         >
-          <Dialog.Title>Nieuwe Klant</Dialog.Title>
+          <Dialog.Title>{t('newCustomer')}</Dialog.Title>
           <Dialog.ScrollArea style={styles.scrollArea}>
             <ScrollView
               contentContainerStyle={styles.dialogContent}
               keyboardShouldPersistTaps="handled"
             >
               <TextInput
-                label="Naam *"
+                label={`${t('customerName')} *`}
                 value={newCustomer.name}
                 onChangeText={(text) =>
                   setNewCustomer({ ...newCustomer, name: text })
@@ -580,7 +600,7 @@ export default function SalesScreen({ navigation }) {
               />
 
               <TextInput
-                label="Email"
+                label={t('email')}
                 value={newCustomer.email}
                 onChangeText={(text) =>
                   setNewCustomer({ ...newCustomer, email: text })
@@ -593,7 +613,7 @@ export default function SalesScreen({ navigation }) {
               />
 
               <TextInput
-                label="Telefoon"
+                label={t('phone')}
                 value={newCustomer.phone}
                 onChangeText={(text) =>
                   setNewCustomer({ ...newCustomer, phone: text })
@@ -605,7 +625,7 @@ export default function SalesScreen({ navigation }) {
               />
 
               <TextInput
-                label="Adres"
+                label={t('address')}
                 value={newCustomer.address}
                 onChangeText={(text) =>
                   setNewCustomer({ ...newCustomer, address: text })
@@ -618,7 +638,7 @@ export default function SalesScreen({ navigation }) {
               />
 
               <TextInput
-                label="Notities"
+                label={t('notes')}
                 value={newCustomer.notes}
                 onChangeText={(text) =>
                   setNewCustomer({ ...newCustomer, notes: text })
@@ -632,9 +652,9 @@ export default function SalesScreen({ navigation }) {
           </Dialog.ScrollArea>
           <Dialog.Actions>
             <Button onPress={() => setShowCustomerDialog(false)}>
-              Annuleren
+              {t('cancel')}
             </Button>
-            <Button onPress={handleCreateCustomer}>Aanmaken</Button>
+            <Button onPress={handleCreateCustomer}>{t('create')}</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>
@@ -780,7 +800,7 @@ const styles = StyleSheet.create({
     maxHeight: "90%",
   },
   scrollArea: {
-    maxHeight: 400,
+    maxHeight: 500,
     paddingHorizontal: 0,
   },
   dialogContent: {

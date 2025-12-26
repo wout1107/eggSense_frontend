@@ -21,10 +21,12 @@ import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
 import customerService from "../services/customerService";
 import salesService from "../services/salesService";
 import { useTheme } from "../context/ThemeContext";
+import { useSettings } from "../context/SettingsContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function CustomerDetailScreen({ route, navigation }) {
   const { isDarkMode, colors } = useTheme();
+  const { t } = useSettings();
   const insets = useSafeAreaInsets();
   const { customerId } = route.params;
   const [customer, setCustomer] = useState(null);
@@ -55,7 +57,7 @@ export default function CustomerDetailScreen({ route, navigation }) {
       setCustomerStats(stats);
     } catch (error) {
       console.error("Error loading customer details:", error);
-      Alert.alert("Fout", "Kon klantgegevens niet ophalen");
+      Alert.alert(t('error'), t('couldNotLoadCustomer'));
       navigation.goBack();
     } finally {
       setLoading(false);
@@ -64,7 +66,7 @@ export default function CustomerDetailScreen({ route, navigation }) {
 
   const handleUpdateCustomer = async () => {
     if (!editedCustomer.name.trim()) {
-      Alert.alert("Fout", "Vul een naam in voor de klant");
+      Alert.alert(t('error'), t('enterCustomerName'));
       return;
     }
 
@@ -79,30 +81,30 @@ export default function CustomerDetailScreen({ route, navigation }) {
 
       setShowEditDialog(false);
       await loadCustomerDetails();
-      Alert.alert("Succes", "Klant succesvol bijgewerkt");
+      Alert.alert(t('success'), t('customerUpdated'));
     } catch (error) {
       console.error("Error updating customer:", error);
-      Alert.alert("Fout", "Kon klant niet bijwerken");
+      Alert.alert(t('error'), t('couldNotUpdateCustomer'));
     }
   };
 
   const handleDeleteCustomer = () => {
     Alert.alert(
-      "Bevestigen",
-      "Weet je zeker dat je deze klant wilt verwijderen?",
+      t('confirm'),
+      t('confirmDeleteCustomer'),
       [
-        { text: "Annuleren", style: "cancel" },
+        { text: t('cancel'), style: "cancel" },
         {
-          text: "Verwijderen",
+          text: t('delete'),
           style: "destructive",
           onPress: async () => {
             try {
               await customerService.deleteCustomer(customerId);
-              Alert.alert("Succes", "Klant succesvol verwijderd");
+              Alert.alert(t('success'), t('customerDeleted'));
               navigation.goBack();
             } catch (error) {
               console.error("Error deleting customer:", error);
-              Alert.alert("Fout", "Kon klant niet verwijderen");
+              Alert.alert(t('error'), t('couldNotDeleteCustomer'));
             }
           },
         },
@@ -128,13 +130,13 @@ export default function CustomerDetailScreen({ route, navigation }) {
   const getStatusLabel = (status) => {
     switch (status) {
       case "PENDING":
-        return "Pending";
+        return t('inProgress');
       case "CONFIRMED":
-        return "Bevestigd";
+        return t('confirmed');
       case "DELIVERED":
-        return "Geleverd";
+        return t('delivered');
       case "CANCELLED":
-        return "Geannuleerd";
+        return t('cancelled');
       default:
         return status;
     }
@@ -181,7 +183,7 @@ export default function CustomerDetailScreen({ route, navigation }) {
             })}
           </Text>
           <View style={styles.orderFooter}>
-            <Text style={[styles.orderEggs, { color: colors.onSurfaceVariant }]}>{totalEggs} eieren</Text>
+            <Text style={[styles.orderEggs, { color: colors.onSurfaceVariant }]}>{totalEggs} {t('eggs')}</Text>
             <Text style={[styles.orderPrice, { color: colors.primary }]}>€{item.totalPrice.toFixed(2)}</Text>
           </View>
         </Card.Content>
@@ -193,7 +195,7 @@ export default function CustomerDetailScreen({ route, navigation }) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.loadingText, { color: colors.onSurfaceVariant }]}>Laden...</Text>
+        <Text style={[styles.loadingText, { color: colors.onSurfaceVariant }]}>{t('loading')}</Text>
       </View>
     );
   }
@@ -201,7 +203,7 @@ export default function CustomerDetailScreen({ route, navigation }) {
   if (!customer) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
-        <Text style={{ color: colors.onSurface }}>Klant niet gevonden</Text>
+        <Text style={{ color: colors.onSurface }}>{t('customerNotFound')}</Text>
       </View>
     );
   }
@@ -217,7 +219,7 @@ export default function CustomerDetailScreen({ route, navigation }) {
         />
         <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>{customer.name}</Text>
-          <Text style={styles.headerSubtitle}>Klantdetails</Text>
+          <Text style={styles.headerSubtitle}>{t('customerDetails')}</Text>
         </View>
         <IconButton
           icon="pencil"
@@ -237,21 +239,21 @@ export default function CustomerDetailScreen({ route, navigation }) {
                 <Text style={[styles.statValue, { color: colors.onSurface }]}>
                   {customerStats?.orderCount || 0}
                 </Text>
-                <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Orders</Text>
+                <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>{t('orders')}</Text>
               </View>
               <View style={styles.statItem}>
                 <Icon name="currency-eur" size={32} color={colors.primary} />
                 <Text style={[styles.statValue, { color: colors.onSurface }]}>
                   €{(customerStats?.totalRevenue || 0).toFixed(2)}
                 </Text>
-                <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Totaal Uitgegeven</Text>
+                <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>{t('totalSpent')}</Text>
               </View>
               <View style={styles.statItem}>
                 <Icon name="chart-line" size={32} color={colors.primary} />
                 <Text style={[styles.statValue, { color: colors.onSurface }]}>
                   €{(customerStats?.averageOrderValue || 0).toFixed(2)}
                 </Text>
-                <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Gem. Orderwaarde</Text>
+                <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>{t('avgOrderValue')}</Text>
               </View>
             </View>
           </Card.Content>
@@ -260,7 +262,7 @@ export default function CustomerDetailScreen({ route, navigation }) {
         {/* Contact Information */}
         <Card style={[styles.card, { backgroundColor: colors.surface }]}>
           <Card.Title
-            title="Contactinformatie"
+            title={t('contactInfo')}
             titleStyle={{ color: colors.onSurface }}
             left={(props) => (
               <Icon {...props} name="card-account-details" size={24} color={colors.onSurfaceVariant} />
@@ -296,7 +298,7 @@ export default function CustomerDetailScreen({ route, navigation }) {
               !customer.address &&
               !customer.notes && (
                 <Text style={[styles.noInfoText, { color: colors.onSurfaceVariant }]}>
-                  Geen aanvullende informatie beschikbaar
+                  {t('noAdditionalInfo')}
                 </Text>
               )}
           </Card.Content>
@@ -305,9 +307,9 @@ export default function CustomerDetailScreen({ route, navigation }) {
         {/* Order History */}
         <Card style={[styles.card, { backgroundColor: colors.surface }]}>
           <Card.Title
-            title="Ordergeschiedenis"
+            title={t('orderHistory')}
             titleStyle={{ color: colors.onSurface }}
-            subtitle={`${customerOrders.length} order${customerOrders.length !== 1 ? "s" : ""
+            subtitle={`${customerOrders.length} ${t('orders').toLowerCase()}${customerOrders.length !== 1 ? "" : ""
               }`}
             subtitleStyle={{ color: colors.onSurfaceVariant }}
             left={(props) => <Icon {...props} name="history" size={24} color={colors.onSurfaceVariant} />}
@@ -323,7 +325,7 @@ export default function CustomerDetailScreen({ route, navigation }) {
             ) : (
               <View style={styles.emptyOrders}>
                 <Icon name="cart-off" size={48} color={colors.onSurfaceVariant} />
-                <Text style={[styles.emptyText, { color: colors.onSurfaceVariant }]}>Nog geen orders</Text>
+                <Text style={[styles.emptyText, { color: colors.onSurfaceVariant }]}>{t('noOrders')}</Text>
               </View>
             )}
           </Card.Content>
@@ -337,7 +339,7 @@ export default function CustomerDetailScreen({ route, navigation }) {
           textColor="#F44336"
           icon="delete"
         >
-          Klant verwijderen
+          {t('deleteCustomer')}
         </Button>
       </ScrollView>
 
@@ -348,14 +350,14 @@ export default function CustomerDetailScreen({ route, navigation }) {
           onDismiss={() => setShowEditDialog(false)}
           style={styles.dialog}
         >
-          <Dialog.Title>Klant Bewerken</Dialog.Title>
+          <Dialog.Title>{t('editCustomer')}</Dialog.Title>
           <Dialog.ScrollArea style={styles.scrollArea}>
             <ScrollView
               contentContainerStyle={styles.dialogContent}
               keyboardShouldPersistTaps="handled"
             >
               <TextInput
-                label="Naam *"
+                label={`${t('customerName')} *`}
                 value={editedCustomer?.name || ""}
                 onChangeText={(text) =>
                   setEditedCustomer({ ...editedCustomer, name: text })
@@ -364,7 +366,7 @@ export default function CustomerDetailScreen({ route, navigation }) {
               />
 
               <TextInput
-                label="Email"
+                label={t('email')}
                 value={editedCustomer?.email || ""}
                 onChangeText={(text) =>
                   setEditedCustomer({ ...editedCustomer, email: text })
@@ -375,7 +377,7 @@ export default function CustomerDetailScreen({ route, navigation }) {
               />
 
               <TextInput
-                label="Telefoon"
+                label={t('phone')}
                 value={editedCustomer?.phone || ""}
                 onChangeText={(text) =>
                   setEditedCustomer({ ...editedCustomer, phone: text })
@@ -385,7 +387,7 @@ export default function CustomerDetailScreen({ route, navigation }) {
               />
 
               <TextInput
-                label="Adres"
+                label={t('address')}
                 value={editedCustomer?.address || ""}
                 onChangeText={(text) =>
                   setEditedCustomer({ ...editedCustomer, address: text })
@@ -396,7 +398,7 @@ export default function CustomerDetailScreen({ route, navigation }) {
               />
 
               <TextInput
-                label="Notities"
+                label={t('notes')}
                 value={editedCustomer?.notes || ""}
                 onChangeText={(text) =>
                   setEditedCustomer({ ...editedCustomer, notes: text })
@@ -408,8 +410,8 @@ export default function CustomerDetailScreen({ route, navigation }) {
             </ScrollView>
           </Dialog.ScrollArea>
           <Dialog.Actions>
-            <Button onPress={() => setShowEditDialog(false)}>Annuleren</Button>
-            <Button onPress={handleUpdateCustomer}>Opslaan</Button>
+            <Button onPress={() => setShowEditDialog(false)}>{t('cancel')}</Button>
+            <Button onPress={handleUpdateCustomer}>{t('save')}</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>

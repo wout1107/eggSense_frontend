@@ -26,12 +26,14 @@ import productionService from "../services/productionService";
 import salesService from "../services/salesService";
 import api from "../services/api";
 import { useTheme } from "../context/ThemeContext";
+import { useSettings } from "../context/SettingsContext";
 
 const { width: screenWidth } = Dimensions.get("window");
 
 export default function DashboardScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { isDarkMode, colors } = useTheme();
+  const { t } = useSettings();
   const [refreshing, setRefreshing] = useState(false);
   const [stalls, setStalls] = useState([]);
   const [selectedStall, setSelectedStall] = useState(null);
@@ -59,7 +61,7 @@ export default function DashboardScreen({ navigation }) {
       }
     } catch (error) {
       console.error("Error loading dashboard:", error);
-      Alert.alert("Fout", "Kon dashboardgegevens niet ophalen");
+      Alert.alert(t('error'), t('couldNotLoad'));
     } finally {
       setLoading(false);
     }
@@ -161,10 +163,9 @@ export default function DashboardScreen({ navigation }) {
           <Card.Content>
             <View style={styles.warningContent}>
               <Icon name="alert-circle" size={48} color="#FF9800" />
-              <Text style={[styles.warningTitle, { color: colors.onSurface }]}>Geen Stallen Gevonden</Text>
+              <Text style={[styles.warningTitle, { color: colors.onSurface }]}>{t('noStallsWarning')}</Text>
               <Text style={[styles.warningText, { color: colors.onSurfaceVariant }]}>
-                Maak eerst een stal aan om te beginnen met het bijhouden van
-                productiegegevens.
+                {t('createStallFirst')}
               </Text>
               <Button
                 mode="contained"
@@ -173,7 +174,7 @@ export default function DashboardScreen({ navigation }) {
                 buttonColor={colors.primary}
                 icon="cog"
               >
-                Naar Instellingen
+                {t('goToSettings')}
               </Button>
             </View>
           </Card.Content>
@@ -238,16 +239,16 @@ export default function DashboardScreen({ navigation }) {
                 style={styles.inactiveChip}
                 textStyle={{ fontSize: 11 }}
               >
-                Inactief
+                {t('inactive')}
               </Chip>
             )}
           </View>
 
           <View style={[styles.capacitySection, { backgroundColor: isDarkMode ? '#1E1E1E' : '#f8f9fa' }]}>
             <View style={styles.capacityHeader}>
-              <Text style={[styles.capacityLabel, { color: colors.onSurfaceVariant }]}>Bezetting</Text>
+              <Text style={[styles.capacityLabel, { color: colors.onSurfaceVariant }]}>{t('occupancy')}</Text>
               <Text style={[styles.capacityValue, { color: colors.primary }]}>
-                {activeChickens} / {totalChickens} kippen
+                {activeChickens} / {totalChickens} {t('chickens')}
               </Text>
             </View>
             <ProgressBar
@@ -256,7 +257,7 @@ export default function DashboardScreen({ navigation }) {
               style={[styles.progressBar, { backgroundColor: isDarkMode ? '#333' : '#e0e0e0' }]}
             />
             <Text style={[styles.capacityPercentage, { color: colors.onSurfaceVariant }]}>
-              {utilizationPercent.toFixed(1)}% bezet
+              {utilizationPercent.toFixed(1)}% {t('occupied')}
             </Text>
           </View>
         </Card.Content>
@@ -271,7 +272,7 @@ export default function DashboardScreen({ navigation }) {
     return (
       <Card style={[styles.card, { backgroundColor: colors.surface }]}>
         <Card.Title
-          title="Vandaag"
+          title={t('today')}
           titleStyle={{ color: colors.onSurface }}
           subtitle={new Date().toLocaleDateString("nl-NL", {
             weekday: "long",
@@ -286,7 +287,7 @@ export default function DashboardScreen({ navigation }) {
             <View style={styles.noDataContainer}>
               <Icon name="information-outline" size={48} color={colors.onSurfaceVariant} />
               <Text style={[styles.noDataText, { color: colors.onSurfaceVariant }]}>
-                Nog geen gegevens ingevoerd voor vandaag
+                {t('noDataToday')}
               </Text>
               <Button
                 mode="outlined"
@@ -298,7 +299,7 @@ export default function DashboardScreen({ navigation }) {
                 style={styles.inputButton}
                 icon="plus"
               >
-                Gegevens Invoeren
+                {t('enterData')}
               </Button>
             </View>
           ) : (
@@ -306,21 +307,21 @@ export default function DashboardScreen({ navigation }) {
               <View style={styles.statBox}>
                 <Icon name="egg" size={32} color="#FF9800" />
                 <Text style={[styles.statValue, { color: colors.onSurface }]}>{todayEggs}</Text>
-                <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Eieren</Text>
+                <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>{t('eggs')}</Text>
               </View>
               <View style={styles.statBox}>
                 <Icon name="food-drumstick" size={32} color="#2196F3" />
                 <Text style={[styles.statValue, { color: colors.onSurface }]}>
                   {todayProduction.feedKg || 0}
                 </Text>
-                <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Voer (kg)</Text>
+                <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>{t('feedKg')}</Text>
               </View>
               <View style={styles.statBox}>
                 <Icon name="water" size={32} color="#00BCD4" />
                 <Text style={[styles.statValue, { color: colors.onSurface }]}>
                   {todayProduction.waterLiters || 0}
                 </Text>
-                <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Water (L)</Text>
+                <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>{t('waterL')}</Text>
               </View>
               {todayProduction.mortality > 0 && (
                 <View style={styles.statBox}>
@@ -328,7 +329,7 @@ export default function DashboardScreen({ navigation }) {
                   <Text style={[styles.statValue, { color: colors.onSurface }]}>
                     {todayProduction.mortality}
                   </Text>
-                  <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>Uitval</Text>
+                  <Text style={[styles.statLabel, { color: colors.onSurfaceVariant }]}>{t('mortality')}</Text>
                 </View>
               )}
             </View>
@@ -343,7 +344,7 @@ export default function DashboardScreen({ navigation }) {
       return (
         <Card style={[styles.card, { backgroundColor: colors.surface }]}>
           <Card.Title
-            title="Week Overzicht"
+            title={t('weekOverview')}
             titleStyle={{ color: colors.onSurface }}
             left={(props) => <Icon {...props} name="chart-line" size={24} color={colors.onSurfaceVariant} />}
           />
@@ -351,7 +352,7 @@ export default function DashboardScreen({ navigation }) {
             <View style={styles.noDataContainer}>
               <Icon name="chart-line-variant" size={48} color={colors.onSurfaceVariant} />
               <Text style={[styles.noDataText, { color: colors.onSurfaceVariant }]}>
-                Geen productiegegevens beschikbaar voor deze week
+                {t('noProductionData')}
               </Text>
             </View>
           </Card.Content>
@@ -429,19 +430,19 @@ export default function DashboardScreen({ navigation }) {
                 <View style={styles.tooltipRow}>
                   <Icon name="egg" size={16} color="#FF9800" />
                   <Text style={[styles.tooltipText, { color: isDarkMode ? '#fff' : '#333' }]}>
-                    Totaal: <Text style={styles.tooltipValue}>{selectedChartData.total}</Text> eieren
+                    {t('totalEggs')}: <Text style={styles.tooltipValue}>{selectedChartData.total}</Text> {t('eggs')}
                   </Text>
                 </View>
                 <View style={styles.tooltipDivider} />
                 <View style={styles.tooltipBreakdown}>
                   <Text style={[styles.tooltipSmall, { color: isDarkMode ? '#ddd' : '#666' }]}>
-                    Klein: {selectedChartData.small} | Medium: {selectedChartData.medium} | Groot: {selectedChartData.large}
+                    {t('small')}: {selectedChartData.small} | {t('medium')}: {selectedChartData.medium} | {t('large')}: {selectedChartData.large}
                   </Text>
                 </View>
                 {(selectedChartData.feed > 0 || selectedChartData.water > 0) && (
                   <View style={styles.tooltipBreakdown}>
                     <Text style={[styles.tooltipSmall, { color: isDarkMode ? '#ddd' : '#666' }]}>
-                      Voer: {selectedChartData.feed}kg | Water: {selectedChartData.water}L
+                      {t('feed')}: {selectedChartData.feed}kg | {t('water')}: {selectedChartData.water}L
                     </Text>
                   </View>
                 )}
@@ -477,19 +478,19 @@ export default function DashboardScreen({ navigation }) {
               <Divider style={styles.divider} />
               <View style={styles.weekStatsContainer}>
                 <View style={styles.weekStatItem}>
-                  <Text style={[styles.weekStatLabel, { color: colors.onSurfaceVariant }]}>Totaal Eieren</Text>
+                  <Text style={[styles.weekStatLabel, { color: colors.onSurfaceVariant }]}>{t('totalEggs')}</Text>
                   <Text style={[styles.weekStatValue, { color: colors.primary }]}>
                     {weekStats.totalEggs}
                   </Text>
                 </View>
                 <View style={styles.weekStatItem}>
-                  <Text style={[styles.weekStatLabel, { color: colors.onSurfaceVariant }]}>Gemiddeld/Dag</Text>
+                  <Text style={[styles.weekStatLabel, { color: colors.onSurfaceVariant }]}>{t('avgPerDay')}</Text>
                   <Text style={[styles.weekStatValue, { color: colors.primary }]}>
                     {weekStats.avgEggsPerDay.toFixed(0)}
                   </Text>
                 </View>
                 <View style={styles.weekStatItem}>
-                  <Text style={[styles.weekStatLabel, { color: colors.onSurfaceVariant }]}>Totaal Voer</Text>
+                  <Text style={[styles.weekStatLabel, { color: colors.onSurfaceVariant }]}>{t('totalFeed')}</Text>
                   <Text style={[styles.weekStatValue, { color: colors.primary }]}>
                     {weekStats.totalFeed.toFixed(0)} kg
                   </Text>
@@ -534,14 +535,13 @@ export default function DashboardScreen({ navigation }) {
             <View style={styles.alertText}>
               <Text style={styles.alertTitle}>
                 {isCritical
-                  ? "Kritiek Voerniveau!"
+                  ? t('criticalFeedLevel')
                   : isLow
-                    ? "Lage Voervoorraad"
-                    : "Voervoorraad Normaal"}
+                    ? t('lowFeedStock')
+                    : t('feedStockNormal')}
               </Text>
               <Text style={styles.alertDescription}>
-                Nog {currentStock.toFixed(0)} kg voer beschikbaar (circa{" "}
-                {daysRemaining.toFixed(0)} dagen)
+                {t('feedRemaining', { kg: currentStock.toFixed(0), days: daysRemaining.toFixed(0) })}
               </Text>
             </View>
           </View>
@@ -557,7 +557,7 @@ export default function DashboardScreen({ navigation }) {
       accessibilityLabel="Snelle acties sectie"
     >
       <Card.Title
-        title="Snelle Acties"
+        title={t('quickActions')}
         left={(props) => <Icon {...props} name="lightning-bolt" size={24} />}
       />
       <Card.Content>
@@ -575,7 +575,7 @@ export default function DashboardScreen({ navigation }) {
             accessibilityLabel="Dagelijkse invoer"
             accessibilityHint="Ga naar het scherm voor dagelijkse productie invoer"
           >
-            Dagelijkse Invoer
+            {t('dailyInput')}
           </Button>
           <Button
             mode="outlined"
@@ -585,7 +585,7 @@ export default function DashboardScreen({ navigation }) {
             accessibilityLabel="Rapporten bekijken"
             accessibilityHint="Bekijk productie rapporten en analyses"
           >
-            Rapporten
+            {t('reports')}
           </Button>
           <Button
             mode="outlined"
@@ -595,7 +595,7 @@ export default function DashboardScreen({ navigation }) {
             accessibilityLabel="Verkoop beheren"
             accessibilityHint="Ga naar verkoop overzicht en orders"
           >
-            Verkoop
+            {t('sales')}
           </Button>
           <Button
             mode="outlined"
@@ -605,7 +605,7 @@ export default function DashboardScreen({ navigation }) {
             accessibilityLabel="Voerleveringen"
             accessibilityHint="Beheer voerleveringen en voorraad"
           >
-            Voerleveringen
+            {t('feedDeliveries')}
           </Button>
         </View>
       </Card.Content>
@@ -616,7 +616,7 @@ export default function DashboardScreen({ navigation }) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.loadingText, { color: colors.onSurfaceVariant }]}>Dashboard laden...</Text>
+        <Text style={[styles.loadingText, { color: colors.onSurfaceVariant }]}>{t('loadingDashboard')}</Text>
       </View>
     );
   }
@@ -625,7 +625,7 @@ export default function DashboardScreen({ navigation }) {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.primary, paddingTop: insets.top }]}>
         <View style={styles.headerLeft}>
-          <Text style={styles.greeting}>Dashboard</Text>
+          <Text style={styles.greeting}>{t('dashboard')}</Text>
           <Text style={styles.date}>
             {new Date().toLocaleDateString("nl-NL", {
               weekday: "long",

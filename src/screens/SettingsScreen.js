@@ -31,7 +31,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 export default function SettingsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { isDarkMode, toggleTheme, colors } = useTheme();
-  const { settings, updateSetting } = useSettings();
+  const { settings, updateSetting, t } = useSettings();
 
   const [selectedCategory, setSelectedCategory] = useState("stalls");
   const [loading, setLoading] = useState(true);
@@ -63,7 +63,7 @@ export default function SettingsScreen({ navigation }) {
       await loadUserData();
     } catch (error) {
       console.error("Error loading settings data:", error);
-      Alert.alert("Fout", "Kon instellingen niet laden");
+      Alert.alert(('error'), ('couldNotLoadSettings'));
     } finally {
       setLoading(false);
     }
@@ -86,7 +86,7 @@ export default function SettingsScreen({ navigation }) {
       setStalls(data);
     } catch (error) {
       console.error("Error loading stalls:", error);
-      Alert.alert("Fout", "Kon stallen niet laden");
+      Alert.alert(t('error'), t('couldNotLoadStalls'));
     }
   };
 
@@ -119,12 +119,12 @@ export default function SettingsScreen({ navigation }) {
 
   const saveStall = async () => {
     if (!editedStall.name.trim()) {
-      Alert.alert("Fout", "Vul een stal naam in");
+      Alert.alert(t('error'), t('stallNameRequired'));
       return;
     }
 
     if (!editedStall.capacity || parseInt(editedStall.capacity) <= 0) {
-      Alert.alert("Fout", "Vul een geldige capaciteit in");
+      Alert.alert(t('error'), t('validCapacityRequired'));
       return;
     }
 
@@ -139,20 +139,20 @@ export default function SettingsScreen({ navigation }) {
 
       if (selectedStall) {
         await stallService.updateStall(selectedStall.id, stallData);
-        Alert.alert("Succes", "Stal succesvol bijgewerkt");
+        Alert.alert(t('success'), t('stallUpdated'));
       } else {
         stallData.initialChickenCount = parseInt(
           editedStall.initialChickenCount || editedStall.capacity
         );
         await stallService.createStall(stallData);
-        Alert.alert("Succes", "Stal succesvol aangemaakt");
+        Alert.alert(t('success'), t('stallCreated'));
       }
 
       setEditStallDialogVisible(false);
       await loadStalls();
     } catch (error) {
       console.error("Error saving stall:", error);
-      Alert.alert("Fout", "Kon stal niet opslaan");
+      Alert.alert(t('error'), t('couldNotSaveStall'));
     }
   };
 
@@ -169,10 +169,10 @@ export default function SettingsScreen({ navigation }) {
       setDeleteDialogVisible(false);
       setStallToDelete(null);
       await loadStalls();
-      Alert.alert("Succes", "Stal succesvol verwijderd");
+      Alert.alert(t('success'), t('stallDeleted'));
     } catch (error) {
       console.error("Error deleting stall:", error);
-      Alert.alert("Fout", "Kon stal niet verwijderen");
+      Alert.alert(t('error'), t('couldNotDeleteStall'));
     }
   };
 
@@ -185,15 +185,15 @@ export default function SettingsScreen({ navigation }) {
       await loadStalls();
     } catch (error) {
       console.error("Error toggling stall status:", error);
-      Alert.alert("Fout", "Kon stal status niet wijzigen");
+      Alert.alert(t('error'), t('couldNotChangeStatus'));
     }
   };
 
   const handleLogout = async () => {
-    Alert.alert("Uitloggen", "Weet je zeker dat je wilt uitloggen?", [
-      { text: "Annuleren", style: "cancel" },
+    Alert.alert(t('logout'), t('confirmLogout'), [
+      { text: t('cancel'), style: "cancel" },
       {
-        text: "Uitloggen",
+        text: t('logout'),
         style: "destructive",
         onPress: async () => {
           try {
@@ -254,7 +254,7 @@ export default function SettingsScreen({ navigation }) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.loadingText, { color: colors.onSurface }]}>Laden...</Text>
+        <Text style={[styles.loadingText, { color: colors.onSurface }]}>{t('loading')}</Text>
       </View>
     );
   }
@@ -268,7 +268,7 @@ export default function SettingsScreen({ navigation }) {
           onPress={() => navigation.goBack()}
           iconColor={colors.primary}
         />
-        <Text style={dynamicStyles.headerTitle}>Instellingen</Text>
+        <Text style={dynamicStyles.headerTitle}>{t('settings')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -278,9 +278,9 @@ export default function SettingsScreen({ navigation }) {
           value={selectedCategory}
           onValueChange={setSelectedCategory}
           buttons={[
-            { value: "stalls", label: "Stallen", icon: "barn" },
-            { value: "app", label: "App", icon: "cog" },
-            { value: "account", label: "Account", icon: "account" },
+            { value: "stalls", label: t('stalls'), icon: "barn" },
+            { value: "app", label: t('app'), icon: "cog" },
+            { value: "account", label: t('account'), icon: "account" },
           ]}
           style={styles.categorySelector}
         />
@@ -291,7 +291,7 @@ export default function SettingsScreen({ navigation }) {
             <Card.Content>
               <View style={styles.cardHeader}>
                 <Title style={dynamicStyles.cardTitle}>
-                  Stallen ({stalls.length})
+                  {t('stalls')} ({stalls.length})
                 </Title>
                 <Button
                   mode="outlined"
@@ -299,15 +299,15 @@ export default function SettingsScreen({ navigation }) {
                   compact
                   icon="plus"
                 >
-                  Toevoegen
+                  {t('add')}
                 </Button>
               </View>
 
               {stalls.length === 0 ? (
                 <View style={styles.emptyState}>
-                  <Text style={[styles.emptyText, dynamicStyles.subText]}>Geen stallen gevonden</Text>
+                  <Text style={[styles.emptyText, dynamicStyles.subText]}>{t('noStallsFound')}</Text>
                   <Text style={[styles.emptySubtext, dynamicStyles.subText]}>
-                    Voeg een stal toe om te beginnen
+                    {t('addStallToStart')}
                   </Text>
                 </View>
               ) : (
@@ -318,7 +318,7 @@ export default function SettingsScreen({ navigation }) {
                         <View style={styles.stallInfo}>
                           <Text style={[styles.stallName, { color: colors.primary }]}>{stall.name}</Text>
                           <Text style={[styles.stallDetails, dynamicStyles.subText]}>
-                            Capaciteit: {stall.capacity} kippen
+                            {t('capacity')}: {stall.capacity} {t('chickens')}
                           </Text>
                           {stall.notes && (
                             <Text style={[styles.stallNotes, dynamicStyles.subText]}>{stall.notes}</Text>
@@ -326,7 +326,7 @@ export default function SettingsScreen({ navigation }) {
                         </View>
                         <View style={styles.stallActions}>
                           <Text style={[styles.stallStatusLabel, dynamicStyles.subText]}>
-                            {stall.active ? "Actief" : "Inactief"}
+                            {stall.active ? t('active') : t('inactive')}
                           </Text>
                           <Switch
                             value={stall.active}
@@ -344,7 +344,7 @@ export default function SettingsScreen({ navigation }) {
                           icon="pencil"
                           style={styles.stallButton}
                         >
-                          Bewerken
+                          {t('edit')}
                         </Button>
                         <Button
                           mode="outlined"
@@ -354,7 +354,7 @@ export default function SettingsScreen({ navigation }) {
                           textColor="#F44336"
                           style={styles.stallButton}
                         >
-                          Verwijderen
+                          {t('delete')}
                         </Button>
                       </View>
 
@@ -364,7 +364,7 @@ export default function SettingsScreen({ navigation }) {
                           style={styles.inactiveChip}
                           textStyle={{ fontSize: 11 }}
                         >
-                          Inactief
+                          {t('inactive')}
                         </Chip>
                       )}
 
@@ -383,7 +383,7 @@ export default function SettingsScreen({ navigation }) {
             {/* Theme & Preferences Card */}
             <Card style={dynamicStyles.card}>
               <Card.Content>
-                <Title style={dynamicStyles.cardTitle}>Weergave & Voorkeuren</Title>
+                <Title style={dynamicStyles.cardTitle}>{t('displayPreferences')}</Title>
 
                 {/* Setting 1: Dark/Light Theme */}
                 <View
@@ -397,9 +397,9 @@ export default function SettingsScreen({ navigation }) {
                   <View style={styles.settingInfo}>
                     <List.Icon icon={isDarkMode ? "weather-night" : "weather-sunny"} color={colors.primary} />
                     <View style={styles.settingText}>
-                      <Text style={[styles.settingTitle, dynamicStyles.text]}>Donker Thema</Text>
+                      <Text style={[styles.settingTitle, dynamicStyles.text]}>{t('darkTheme')}</Text>
                       <Text style={[styles.settingDescription, dynamicStyles.subText]}>
-                        Schakel tussen licht en donker thema
+                        {t('switchTheme')}
                       </Text>
                     </View>
                   </View>
@@ -414,6 +414,52 @@ export default function SettingsScreen({ navigation }) {
 
                 <Divider style={styles.settingDivider} />
 
+                {/* Setting: Language Selection */}
+                <View
+                  style={styles.settingRow}
+                  accessible={true}
+                  accessibilityLabel="Taal instelling"
+                  accessibilityHint="Selecteer de taal van de applicatie"
+                >
+                  <View style={styles.settingInfo}>
+                    <List.Icon icon="translate" color={colors.primary} />
+                    <View style={styles.settingText}>
+                      <Text style={[styles.settingTitle, dynamicStyles.text]}>Taal / Language</Text>
+                      <Text style={[styles.settingDescription, dynamicStyles.subText]}>
+                        {settings.language === 'nl' ? 'Nederlands geselecteerd' : 'English selected'}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+                <View style={styles.stallChipsContainer}>
+                  <Chip
+                    mode={settings.language === 'nl' ? "flat" : "outlined"}
+                    selected={settings.language === 'nl'}
+                    onPress={() => updateSetting('language', 'nl')}
+                    style={styles.stallChip}
+                    icon="flag"
+                    accessibilityLabel="Nederlands selecteren"
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: settings.language === 'nl' }}
+                  >
+                    🇳🇱 Nederlands
+                  </Chip>
+                  <Chip
+                    mode={settings.language === 'en' ? "flat" : "outlined"}
+                    selected={settings.language === 'en'}
+                    onPress={() => updateSetting('language', 'en')}
+                    style={styles.stallChip}
+                    icon="flag"
+                    accessibilityLabel="Select English"
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: settings.language === 'en' }}
+                  >
+                    🇬🇧 English
+                  </Chip>
+                </View>
+
+                <Divider style={styles.settingDivider} />
+
                 {/* Setting 2: Default Stal Selection */}
                 <View
                   style={styles.settingRow}
@@ -424,9 +470,9 @@ export default function SettingsScreen({ navigation }) {
                   <View style={styles.settingInfo}>
                     <List.Icon icon="barn" color={colors.primary} />
                     <View style={styles.settingText}>
-                      <Text style={[styles.settingTitle, dynamicStyles.text]}>Standaard Stal</Text>
+                      <Text style={[styles.settingTitle, dynamicStyles.text]}>{t('defaultStall')}</Text>
                       <Text style={[styles.settingDescription, dynamicStyles.subText]}>
-                        Selecteer de stal die standaard wordt getoond
+                        {t('selectDefaultStall')}
                       </Text>
                     </View>
                   </View>
@@ -441,7 +487,7 @@ export default function SettingsScreen({ navigation }) {
                     accessibilityRole="button"
                     accessibilityState={{ selected: settings.defaultStallId === null }}
                   >
-                    Geen
+                    {t('none')}
                   </Chip>
                   {stalls.map((stall) => (
                     <Chip
@@ -471,9 +517,9 @@ export default function SettingsScreen({ navigation }) {
                   <View style={styles.settingInfo}>
                     <List.Icon icon="alert-circle" color={colors.primary} />
                     <View style={styles.settingText}>
-                      <Text style={[styles.settingTitle, dynamicStyles.text]}>Voorraad Waarschuwing</Text>
+                      <Text style={[styles.settingTitle, dynamicStyles.text]}>{t('stockAlert')}</Text>
                       <Text style={[styles.settingDescription, dynamicStyles.subText]}>
-                        Toon waarschuwing bij minder dan {settings.lowStockAlertDays} dagen voer
+                        {t('showAlertWhenLow', { days: settings.lowStockAlertDays })}
                       </Text>
                     </View>
                   </View>
@@ -490,7 +536,7 @@ export default function SettingsScreen({ navigation }) {
                       accessibilityRole="button"
                       accessibilityState={{ selected: settings.lowStockAlertDays === days }}
                     >
-                      {days} dagen
+                      {days} {t('days')}
                     </Chip>
                   ))}
                 </View>
@@ -499,9 +545,9 @@ export default function SettingsScreen({ navigation }) {
 
             <Card style={dynamicStyles.card}>
               <Card.Content>
-                <Title style={dynamicStyles.cardTitle}>App Informatie</Title>
+                <Title style={dynamicStyles.cardTitle}>{t('appInfo')}</Title>
                 <List.Item
-                  title="Versie"
+                  title={t('version')}
                   description="1.0.0"
                   titleStyle={dynamicStyles.text}
                   descriptionStyle={dynamicStyles.subText}

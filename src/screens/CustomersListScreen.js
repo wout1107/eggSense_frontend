@@ -7,26 +7,28 @@ import {
     RefreshControl,
     TouchableOpacity,
     Alert,
-    ActivityIndicator, // Moved from react-native-paper
+    ActivityIndicator,
 } from "react-native";
 import {
     Card,
-    Searchbar, // Reordered
-    Chip, // Reordered
+    Searchbar,
+    Chip,
     FAB,
     Dialog,
     Portal,
     TextInput,
-    Button, // Reordered
+    Button,
 } from "react-native-paper";
 import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
-import { useSafeAreaInsets } from "react-native-safe-area-context"; // Added import
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import customerService from "../services/customerService";
 import { useTheme } from "../context/ThemeContext";
+import { useSettings } from "../context/SettingsContext";
 
 export default function CustomersListScreen({ navigation }) {
-    const insets = useSafeAreaInsets(); // Added
+    const insets = useSafeAreaInsets();
     const { isDarkMode, colors } = useTheme();
+    const { t } = useSettings();
     const [customers, setCustomers] = useState([]);
     const [filteredCustomers, setFilteredCustomers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -49,7 +51,7 @@ export default function CustomersListScreen({ navigation }) {
             setFilteredCustomers(data);
         } catch (error) {
             console.error("Error loading customers:", error);
-            Alert.alert("Fout", "Kon klanten niet ophalen");
+            Alert.alert(t('error'), t('couldNotLoad'));
         } finally {
             setLoading(false);
         }
@@ -90,7 +92,7 @@ export default function CustomersListScreen({ navigation }) {
 
     const handleAddCustomer = async () => {
         if (!newCustomer.name.trim()) {
-            Alert.alert("Fout", "Vul een naam in voor de klant");
+            Alert.alert(t('error'), t('fillRequired'));
             return;
         }
 
@@ -99,10 +101,10 @@ export default function CustomersListScreen({ navigation }) {
             setShowAddDialog(false);
             setNewCustomer({ name: "", email: "", phone: "", address: "", notes: "" });
             await loadCustomers();
-            Alert.alert("Succes", "Klant succesvol toegevoegd");
+            Alert.alert(t('success'), t('customerCreated'));
         } catch (error) {
             console.error("Error adding customer:", error);
-            Alert.alert("Fout", "Kon klant niet toevoegen");
+            Alert.alert(t('error'), t('couldNotSave'));
         }
     };
 
@@ -255,7 +257,7 @@ export default function CustomersListScreen({ navigation }) {
             <View style={[styles.container, styles.loadingContainer]}>
                 <ActivityIndicator size="large" color={colors.primary} />
                 <Text style={{ color: colors.onSurface, marginTop: 12 }}>
-                    Klanten laden...
+                    {t('customersLoading')}
                 </Text>
             </View>
         );
@@ -264,15 +266,15 @@ export default function CustomersListScreen({ navigation }) {
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
             <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: isDarkMode ? '#333' : '#e0e0e0', paddingTop: insets.top }]}>
-                <Text style={[styles.title, { color: colors.primary }]}>Klanten</Text>
+                <Text style={[styles.title, { color: colors.primary }]}>{t('customers')}</Text>
                 <Text style={[styles.headerSubtitle, { color: colors.onSurfaceVariant }]}>
-                    {customers.length} klant{customers.length !== 1 ? "en" : ""}
+                    {customers.length} {customers.length !== 1 ? t('customers').toLowerCase() : t('customer').toLowerCase()}
                 </Text>
             </View>
 
             <View style={styles.searchContainer}>
                 <Searchbar
-                    placeholder="Zoek klanten..."
+                    placeholder={t('search') + ' ' + t('customers').toLowerCase() + '...'}
                     onChangeText={setSearchQuery}
                     value={searchQuery}
                     style={styles.searchbar}
@@ -294,18 +296,18 @@ export default function CustomersListScreen({ navigation }) {
                     <View style={styles.emptyContainer}>
                         <Icon name="account-group-outline" size={64} color={colors.onSurfaceVariant} />
                         <Text style={styles.emptyText}>
-                            {searchQuery ? "Geen klanten gevonden" : "Nog geen klanten"}
+                            {searchQuery ? t('noCustomersFound') : t('noCustomersFound')}
                         </Text>
                         <Text style={styles.emptySubtext}>
                             {searchQuery
-                                ? "Probeer een andere zoekterm"
-                                : "Voeg je eerste klant toe met de + knop"}
+                                ? t('search') + '...'
+                                : t('addFirstCustomer')}
                         </Text>
                     </View>
                 }
             />
 
-            <FAB
+            < FAB
                 icon="plus"
                 style={styles.fab}
                 onPress={() => setShowAddDialog(true)}
@@ -319,12 +321,12 @@ export default function CustomersListScreen({ navigation }) {
                     style={styles.dialog}
                 >
                     <Dialog.Title style={{ color: colors.onSurface }}>
-                        Nieuwe Klant
+                        {t('newCustomer')}
                     </Dialog.Title>
                     <Dialog.ScrollArea>
                         <View style={styles.dialogContent}>
                             <TextInput
-                                label="Naam *"
+                                label={t('customerName') + ' *'}
                                 value={newCustomer.name}
                                 onChangeText={(text) =>
                                     setNewCustomer({ ...newCustomer, name: text })
@@ -333,7 +335,7 @@ export default function CustomersListScreen({ navigation }) {
                                 mode="outlined"
                             />
                             <TextInput
-                                label="Email"
+                                label={t('email')}
                                 value={newCustomer.email}
                                 onChangeText={(text) =>
                                     setNewCustomer({ ...newCustomer, email: text })
@@ -344,7 +346,7 @@ export default function CustomersListScreen({ navigation }) {
                                 mode="outlined"
                             />
                             <TextInput
-                                label="Telefoon"
+                                label={t('phone')}
                                 value={newCustomer.phone}
                                 onChangeText={(text) =>
                                     setNewCustomer({ ...newCustomer, phone: text })
@@ -354,7 +356,7 @@ export default function CustomersListScreen({ navigation }) {
                                 mode="outlined"
                             />
                             <TextInput
-                                label="Adres"
+                                label={t('address')}
                                 value={newCustomer.address}
                                 onChangeText={(text) =>
                                     setNewCustomer({ ...newCustomer, address: text })
@@ -365,7 +367,7 @@ export default function CustomersListScreen({ navigation }) {
                                 mode="outlined"
                             />
                             <TextInput
-                                label="Notities"
+                                label={t('notes')}
                                 value={newCustomer.notes}
                                 onChangeText={(text) =>
                                     setNewCustomer({ ...newCustomer, notes: text })
@@ -378,11 +380,11 @@ export default function CustomersListScreen({ navigation }) {
                         </View>
                     </Dialog.ScrollArea>
                     <Dialog.Actions>
-                        <Button onPress={() => setShowAddDialog(false)}>Annuleren</Button>
-                        <Button onPress={handleAddCustomer}>Toevoegen</Button>
+                        <Button onPress={() => setShowAddDialog(false)}>{t('cancel')}</Button>
+                        <Button onPress={handleAddCustomer}>{t('add')}</Button>
                     </Dialog.Actions>
                 </Dialog>
             </Portal>
-        </View>
+        </View >
     );
 }

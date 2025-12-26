@@ -24,11 +24,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import api from "../services/api";
 import productionService from "../services/productionService";
 import salesService from "../services/salesService";
+import { useSettings } from "../context/SettingsContext";
 
 const { width } = Dimensions.get("window");
 
 export default function ReportScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const { t } = useSettings();
   const [selectedPeriod, setSelectedPeriod] = useState("week");
   const [selectedMetric, setSelectedMetric] = useState("production");
   const [loading, setLoading] = useState(true);
@@ -141,7 +143,7 @@ export default function ReportScreen({ navigation }) {
         },
         alerts: [],
       });
-      Alert.alert("Fout", "Kon rapportgegevens niet laden");
+      Alert.alert(t('error'), t('couldNotLoadReports'));
     } finally {
       setLoading(false);
     }
@@ -644,7 +646,7 @@ export default function ReportScreen({ navigation }) {
           iconColor="#2E7D32"
         />
         <View style={{ flex: 1 }}>
-          <Text style={styles.header}>Rapporten & Analyses</Text>
+          <Text style={styles.header}>{t('reportsAnalytics')}</Text>
           <Text style={styles.subheader}>
             {new Date().toLocaleDateString("nl-NL")}
           </Text>
