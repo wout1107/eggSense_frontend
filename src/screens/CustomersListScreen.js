@@ -8,6 +8,7 @@ import {
     TouchableOpacity,
     Alert,
     ActivityIndicator,
+    ScrollView,
 } from "react-native";
 import {
     Card,
@@ -323,61 +324,63 @@ export default function CustomersListScreen({ navigation }) {
                     <Dialog.Title style={{ color: colors.onSurface }}>
                         {t('newCustomer')}
                     </Dialog.Title>
-                    <Dialog.ScrollArea>
-                        <View style={styles.dialogContent}>
-                            <TextInput
-                                label={t('customerName') + ' *'}
-                                value={newCustomer.name}
-                                onChangeText={(text) =>
-                                    setNewCustomer({ ...newCustomer, name: text })
-                                }
-                                style={styles.input}
-                                mode="outlined"
-                            />
-                            <TextInput
-                                label={t('email')}
-                                value={newCustomer.email}
-                                onChangeText={(text) =>
-                                    setNewCustomer({ ...newCustomer, email: text })
-                                }
-                                keyboardType="email-address"
-                                autoCapitalize="none"
-                                style={styles.input}
-                                mode="outlined"
-                            />
-                            <TextInput
-                                label={t('phone')}
-                                value={newCustomer.phone}
-                                onChangeText={(text) =>
-                                    setNewCustomer({ ...newCustomer, phone: text })
-                                }
-                                keyboardType="phone-pad"
-                                style={styles.input}
-                                mode="outlined"
-                            />
-                            <TextInput
-                                label={t('address')}
-                                value={newCustomer.address}
-                                onChangeText={(text) =>
-                                    setNewCustomer({ ...newCustomer, address: text })
-                                }
-                                multiline
-                                numberOfLines={2}
-                                style={styles.input}
-                                mode="outlined"
-                            />
-                            <TextInput
-                                label={t('notes')}
-                                value={newCustomer.notes}
-                                onChangeText={(text) =>
-                                    setNewCustomer({ ...newCustomer, notes: text })
-                                }
-                                multiline
-                                numberOfLines={2}
-                                style={styles.input}
-                                mode="outlined"
-                            />
-                        </View>
+                    <Dialog.ScrollArea style={{ maxHeight: 400 }}>
+                        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 80 }}>
+                            <View style={styles.dialogContent}>
+                                <TextInput
+                                    label={t('customerName') + ' *'}
+                                    value={newCustomer.name}
+                                    onChangeText={(text) =>
+                                        setNewCustomer({ ...newCustomer, name: text })
+                                    }
+                                    style={styles.input}
+                                    mode="outlined"
+                                />
+                                <TextInput
+                                    label={t('email')}
+                                    value={newCustomer.email}
+                                    onChangeText={(text) =>
+                                        setNewCustomer({ ...newCustomer, email: text })
+                                    }
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                    style={styles.input}
+                                    mode="outlined"
+                                />
+                                <TextInput
+                                    label={t('phone')}
+                                    value={newCustomer.phone}
+                                    onChangeText={(text) =>
+                                        setNewCustomer({ ...newCustomer, phone: text })
+                                    }
+                                    keyboardType="phone-pad"
+                                    style={styles.input}
+                                    mode="outlined"
+                                />
+                                <TextInput
+                                    label={t('address')}
+                                    value={newCustomer.address}
+                                    onChangeText={(text) =>
+                                        setNewCustomer({ ...newCustomer, address: text })
+                                    }
+                                    multiline
+                                    numberOfLines={2}
+                                    style={styles.input}
+                                    mode="outlined"
+                                />
+                                <TextInput
+                                    label={t('notes')}
+                                    value={newCustomer.notes}
+                                    onChangeText={(text) =>
+                                        setNewCustomer({ ...newCustomer, notes: text })
+                                    }
+                                    multiline
+                                    numberOfLines={2}
+                                    style={styles.input}
+                                    mode="outlined"
+                                />
+                            </View>
+                        </ScrollView>
                     </Dialog.ScrollArea>
                     <Dialog.Actions>
                         <Button onPress={() => setShowAddDialog(false)}>{t('cancel')}</Button>

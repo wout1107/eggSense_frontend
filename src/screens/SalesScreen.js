@@ -587,7 +587,7 @@ export default function SalesScreen({ navigation }) {
           <Dialog.Title>{t('newCustomer')}</Dialog.Title>
           <Dialog.ScrollArea style={styles.scrollArea}>
             <ScrollView
-              contentContainerStyle={styles.dialogContent}
+              contentContainerStyle={[styles.dialogContent, { paddingBottom: 80 }]}
               keyboardShouldPersistTaps="handled"
             >
               <TextInput
