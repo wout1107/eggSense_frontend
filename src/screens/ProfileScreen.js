@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, Platform } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Platform, Alert } from "react-native";
 import { Card, Button, List, Avatar, Divider, Dialog, Portal } from "react-native-paper";
 import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -129,8 +129,8 @@ export default function ProfileScreen({ navigation }) {
               right={(props) => <List.Icon {...props} icon="chevron-right" color={colors.onSurfaceVariant} />}
               onPress={() =>
                 Alert.alert(
-                  "Over EggSense",
-                  "EggSense v1.0.0\n\nProfessioneel kippenstal management systeem.\n\n© 2024 EggSense Solutions"
+                  t('aboutEggSense'),
+                  t('aboutEggSenseDesc')
                 )
               }
             />
@@ -144,8 +144,8 @@ export default function ProfileScreen({ navigation }) {
               right={(props) => <List.Icon {...props} icon="chevron-right" color={colors.onSurfaceVariant} />}
               onPress={() =>
                 Alert.alert(
-                  "Privacy Beleid",
-                  "Uw gegevens worden veilig opgeslagen en nooit gedeeld met derden."
+                  t('privacyPolicy'),
+                  t('privacyPolicyDesc')
                 )
               }
             />
@@ -159,8 +159,8 @@ export default function ProfileScreen({ navigation }) {
               right={(props) => <List.Icon {...props} icon="chevron-right" color={colors.onSurfaceVariant} />}
               onPress={() =>
                 Alert.alert(
-                  "Support",
-                  "Voor vragen of problemen:\n\nEmail: support@eggsense.com\nTelefoon: +32 123 45 67 89"
+                  t('support'),
+                  t('supportDesc')
                 )
               }
             />
@@ -185,7 +185,7 @@ export default function ProfileScreen({ navigation }) {
             <Divider style={{ backgroundColor: isDarkMode ? '#333' : '#e0e0e0' }} />
             <List.Item
               title={t('lastUpdate')}
-              description="December 2024"
+              description="December 2025"
               titleStyle={{ color: colors.onSurface }}
               descriptionStyle={{ color: colors.onSurfaceVariant }}
               left={(props) => <List.Icon {...props} icon="update" color={colors.onSurfaceVariant} />}
@@ -206,7 +206,7 @@ export default function ProfileScreen({ navigation }) {
 
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: colors.primary }]}>EggSense v1.0.0</Text>
-          <Text style={[styles.footerSubtext, { color: colors.onSurfaceVariant }]}>© 2024 EggSense Solutions</Text>
+          <Text style={[styles.footerSubtext, { color: colors.onSurfaceVariant }]}>© 2025 EggSense Solutions</Text>
         </View>
       </ScrollView>
 

@@ -9,6 +9,8 @@ import {
   ScrollView,
   Keyboard,
   TouchableWithoutFeedback,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import {
   Card,
@@ -797,15 +799,15 @@ const styles = StyleSheet.create({
     bottom: 16,
   },
   dialog: {
-    maxHeight: "90%",
+    maxHeight: "85%",
   },
   scrollArea: {
-    maxHeight: 500,
+    maxHeight: 450,
     paddingHorizontal: 0,
   },
   dialogContent: {
     paddingHorizontal: 24,
-    paddingBottom: 16,
+    paddingBottom: 100,
   },
   customerSectionHeader: {
     flexDirection: "row",

@@ -159,8 +159,10 @@ export const translations = {
         developer: 'Ontwikkelaar',
         support: 'Support',
         aboutEggSense: 'Over EggSense',
+        aboutEggSenseDesc: 'EggSense v1.0.0\n\nProfessioneel kippenstal management systeem.\n\n© 2025 EggSense Solutions',
         aboutDescription: 'EggSense is een professioneel management systeem voor pluimveebedrijven. Het helpt u bij het bijhouden van productie, verkoop en voorraden.',
         privacyPolicy: 'Privacy Beleid',
+        privacyPolicyDesc: 'Uw gegevens worden veilig opgeslagen en nooit gedeeld met derden.',
         termsConditions: 'Algemene Voorwaarden',
         couldNotLoadSettings: 'Kon instellingen niet laden',
         stallTab: 'Stallen',
@@ -186,6 +188,7 @@ export const translations = {
         privacyPolicyText: 'Uw gegevens worden veilig opgeslagen en nooit gedeeld met derden.',
         termsComingSoon: 'Algemene voorwaarden worden binnenkort beschikbaar.',
         supportContact: 'Voor vragen of problemen:\n\nEmail: support@eggsense.com\nTelefoon: +32 123 45 67 89',
+        supportDesc: 'Voor vragen of problemen:\n\nEmail: support@eggsense.com\nTelefoon: +32 123 45 67 89',
 
         // Profile
         accountInfo: 'Account Informatie',
@@ -558,8 +561,10 @@ export const translations = {
         currentOccupancyLabel: 'Current occupancy',
         accountActions: 'Account Actions',
         privacyPolicyText: 'Your data is stored securely and never shared with third parties.',
+        privacyPolicyDesc: 'Your data is stored securely and never shared with third parties.',
         termsComingSoon: 'Terms and conditions will be available soon.',
         supportContact: 'For questions or issues:\n\nEmail: support@eggsense.com\nPhone: +32 123 45 67 89',
+        supportDesc: 'For questions or issues:\n\nEmail: support@eggsense.com\nPhone: +32 123 45 67 89',
 
         // Profile
         accountInfo: 'Account Information',
@@ -580,7 +585,8 @@ export const translations = {
         account: 'Account',
         app: 'App',
         confirmLogout: 'Are you sure you want to logout?',
-        aboutAppText: 'EggSense v1.0.0\n\nProfessional poultry management system.\n\n© 2024 EggSense Solutions',
+        aboutAppText: 'EggSense v1.0.0\n\nProfessional poultry management system.\n\n© 2025 EggSense Solutions',
+        aboutEggSenseDesc: 'EggSense v1.0.0\n\nProfessional poultry management system.\n\n© 2025 EggSense Solutions',
 
         // Stalls
         stalls: 'Stalls',

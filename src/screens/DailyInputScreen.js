@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, ScrollView, Alert } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform } from "react-native";
 import {
   Card,
   Title,
@@ -274,121 +274,127 @@ export default function DailyInputScreen({ navigation, route }) {
         />
       </View>
 
-      <ScrollView style={styles.scrollContent}>
-        <Text style={[styles.date, { color: colors.onSurfaceVariant }]}>
-          {new Date().toLocaleDateString("nl-NL", {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}
-        </Text>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+      >
+        <ScrollView style={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          <Text style={[styles.date, { color: colors.onSurfaceVariant }]}>
+            {new Date().toLocaleDateString("nl-NL", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+          </Text>
 
-        {renderStallSelector()}
+          {renderStallSelector()}
 
-        {stalls.length > 0 && selectedStall && (
-          <>
-            <Card style={[styles.card, { backgroundColor: colors.surface }]}>
-              <Card.Content>
-                <Title style={[styles.cardTitle, { color: colors.primary }]}>{t('eggProduction')}</Title>
-                <TextInput
-                  label={t('smallEggsS')}
-                  value={eggData.small}
-                  onChangeText={(text) =>
-                    setEggData({ ...eggData, small: text })
-                  }
-                  keyboardType="numeric"
-                  style={[styles.input, { backgroundColor: colors.surface }]}
-                  mode="outlined"
-                  left={<TextInput.Icon icon="egg" color={colors.onSurfaceVariant} />}
-                />
-                <TextInput
-                  label={t('mediumEggsM')}
-                  value={eggData.medium}
-                  onChangeText={(text) =>
-                    setEggData({ ...eggData, medium: text })
-                  }
-                  keyboardType="numeric"
-                  style={[styles.input, { backgroundColor: colors.surface }]}
-                  mode="outlined"
-                  left={<TextInput.Icon icon="egg" color={colors.onSurfaceVariant} />}
-                />
-                <TextInput
-                  label={t('largeEggsL')}
-                  value={eggData.large}
-                  onChangeText={(text) =>
-                    setEggData({ ...eggData, large: text })
-                  }
-                  keyboardType="numeric"
-                  style={[styles.input, { backgroundColor: colors.surface }]}
-                  mode="outlined"
-                  left={<TextInput.Icon icon="egg" color={colors.onSurfaceVariant} />}
-                />
-                <View style={[styles.totalEggsContainer, { backgroundColor: isDarkMode ? '#1B5E20' : '#E8F5E9' }]}>
-                  <Text style={[styles.totalEggsLabel, { color: colors.primary }]}>{t('totalEggs')}:</Text>
-                  <Text style={[styles.totalEggsValue, { color: colors.primary }]}>
-                    {parseInt(eggData.small || 0) +
-                      parseInt(eggData.medium || 0) +
-                      parseInt(eggData.large || 0) || 0}{" "}
-                    {t('eggs')}
-                  </Text>
-                </View>
-              </Card.Content>
-            </Card>
+          {stalls.length > 0 && selectedStall && (
+            <>
+              <Card style={[styles.card, { backgroundColor: colors.surface }]}>
+                <Card.Content>
+                  <Title style={[styles.cardTitle, { color: colors.primary }]}>{t('eggProduction')}</Title>
+                  <TextInput
+                    label={t('smallEggsS')}
+                    value={eggData.small}
+                    onChangeText={(text) =>
+                      setEggData({ ...eggData, small: text })
+                    }
+                    keyboardType="numeric"
+                    style={[styles.input, { backgroundColor: colors.surface }]}
+                    mode="outlined"
+                    left={<TextInput.Icon icon="egg" color={colors.onSurfaceVariant} />}
+                  />
+                  <TextInput
+                    label={t('mediumEggsM')}
+                    value={eggData.medium}
+                    onChangeText={(text) =>
+                      setEggData({ ...eggData, medium: text })
+                    }
+                    keyboardType="numeric"
+                    style={[styles.input, { backgroundColor: colors.surface }]}
+                    mode="outlined"
+                    left={<TextInput.Icon icon="egg" color={colors.onSurfaceVariant} />}
+                  />
+                  <TextInput
+                    label={t('largeEggsL')}
+                    value={eggData.large}
+                    onChangeText={(text) =>
+                      setEggData({ ...eggData, large: text })
+                    }
+                    keyboardType="numeric"
+                    style={[styles.input, { backgroundColor: colors.surface }]}
+                    mode="outlined"
+                    left={<TextInput.Icon icon="egg" color={colors.onSurfaceVariant} />}
+                  />
+                  <View style={[styles.totalEggsContainer, { backgroundColor: isDarkMode ? '#1B5E20' : '#E8F5E9' }]}>
+                    <Text style={[styles.totalEggsLabel, { color: colors.primary }]}>{t('totalEggs')}:</Text>
+                    <Text style={[styles.totalEggsValue, { color: colors.primary }]}>
+                      {parseInt(eggData.small || 0) +
+                        parseInt(eggData.medium || 0) +
+                        parseInt(eggData.large || 0) || 0}{" "}
+                      {t('eggs')}
+                    </Text>
+                  </View>
+                </Card.Content>
+              </Card>
 
-            <Card style={[styles.card, { backgroundColor: colors.surface }]}>
-              <Card.Content>
-                <Title style={[styles.cardTitle, { color: colors.primary }]}>{t('consumption')}</Title>
-                <TextInput
-                  label={t('feedConsumptionKg')}
-                  value={feedConsumption}
-                  onChangeText={setFeedConsumption}
-                  keyboardType="numeric"
-                  style={[styles.input, { backgroundColor: colors.surface }]}
-                  mode="outlined"
-                  left={<TextInput.Icon icon="food-drumstick" color={colors.onSurfaceVariant} />}
-                />
-                <TextInput
-                  label={t('waterConsumptionL')}
-                  value={waterConsumption}
-                  onChangeText={setWaterConsumption}
-                  keyboardType="numeric"
-                  style={[styles.input, { backgroundColor: colors.surface }]}
-                  mode="outlined"
-                  left={<TextInput.Icon icon="water" color={colors.onSurfaceVariant} />}
-                />
-              </Card.Content>
-            </Card>
+              <Card style={[styles.card, { backgroundColor: colors.surface }]}>
+                <Card.Content>
+                  <Title style={[styles.cardTitle, { color: colors.primary }]}>{t('consumption')}</Title>
+                  <TextInput
+                    label={t('feedConsumptionKg')}
+                    value={feedConsumption}
+                    onChangeText={setFeedConsumption}
+                    keyboardType="numeric"
+                    style={[styles.input, { backgroundColor: colors.surface }]}
+                    mode="outlined"
+                    left={<TextInput.Icon icon="food-drumstick" color={colors.onSurfaceVariant} />}
+                  />
+                  <TextInput
+                    label={t('waterConsumptionL')}
+                    value={waterConsumption}
+                    onChangeText={setWaterConsumption}
+                    keyboardType="numeric"
+                    style={[styles.input, { backgroundColor: colors.surface }]}
+                    mode="outlined"
+                    left={<TextInput.Icon icon="water" color={colors.onSurfaceVariant} />}
+                  />
+                </Card.Content>
+              </Card>
 
-            <Card style={[styles.card, { backgroundColor: colors.surface }]}>
-              <Card.Content>
-                <Title style={[styles.cardTitle, { color: colors.primary }]}>{t('mortalitySection')}</Title>
-                <TextInput
-                  label={t('numberOfCasualties')}
-                  value={casualties}
-                  onChangeText={setCasualties}
-                  keyboardType="numeric"
-                  style={[styles.input, { backgroundColor: colors.surface }]}
-                  mode="outlined"
-                  left={<TextInput.Icon icon="alert-circle" color={colors.onSurfaceVariant} />}
-                />
-              </Card.Content>
-            </Card>
+              <Card style={[styles.card, { backgroundColor: colors.surface }]}>
+                <Card.Content>
+                  <Title style={[styles.cardTitle, { color: colors.primary }]}>{t('mortalitySection')}</Title>
+                  <TextInput
+                    label={t('numberOfCasualties')}
+                    value={casualties}
+                    onChangeText={setCasualties}
+                    keyboardType="numeric"
+                    style={[styles.input, { backgroundColor: colors.surface }]}
+                    mode="outlined"
+                    left={<TextInput.Icon icon="alert-circle" color={colors.onSurfaceVariant} />}
+                  />
+                </Card.Content>
+              </Card>
 
-            <Button
-              mode="contained"
-              onPress={handleSave}
-              style={styles.saveButton}
-              buttonColor={colors.primary}
-              loading={isLoading}
-              disabled={isLoading}
-              icon="check"
-            >
-              {t('saveData')}
-            </Button>
-          </>
-        )}
-      </ScrollView>
+              <Button
+                mode="contained"
+                onPress={handleSave}
+                style={styles.saveButton}
+                buttonColor={colors.primary}
+                loading={isLoading}
+                disabled={isLoading}
+                icon="check"
+              >
+                {t('saveData')}
+              </Button>
+            </>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }

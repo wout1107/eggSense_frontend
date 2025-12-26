@@ -291,7 +291,7 @@ export default function WelcomeScreen({ navigation }) {
       <View style={styles.footer}>
         <Text style={styles.footerText}>EggSense v1.0.0</Text>
         <Text style={styles.footerSubtext}>
-          © 2024 EggSense Solutions • Alle rechten voorbehouden
+          © 2025 EggSense Solutions • Alle rechten voorbehouden
         </Text>
         <View style={styles.footerLinks}>
           <Text style={styles.footerLink}>Privacy Policy</Text>
